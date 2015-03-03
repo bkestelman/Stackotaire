@@ -14,15 +14,16 @@ public class Card {
     public static final int ACE = 1;
     
     private int suit, value;
-    private boolean isFaceUp;
-    private String imagePath, strValue, strSuit;
+    private boolean isFaceUp, isSelected;
+
+	private String imagePath, strValue, strSuit;
     //private Image image;
     
     public Card()
     {
     	suit = 0;
     	value = 0; 
-    	isFaceUp = false;
+    	isFaceUp = isSelected = false;
     	strSuit = strValue = imagePath = "";
     }
     
@@ -32,6 +33,7 @@ public class Card {
     	setValue(value);
     	setSuit(suit);
     	setFaceUp(isFaceUp);
+    	isSelected = false;
     	switch(value)
     	{
     		case ACE: strValue = "ace";
@@ -62,16 +64,13 @@ public class Card {
     	//setImage();
     }
     
-    /*
-    public Image getImage() {
-		return image;
+    public boolean isSelected() {
+		return isSelected;
 	}
 
-	public void setImage() {
-		//System.out.println("\n" + imagePath);
-		image = new Image(imagePath);
+	public void setIsSelected(boolean isSelected) {
+		this.isSelected = isSelected;
 	}
-	*/
 
 	public void setImagePath()
     {
