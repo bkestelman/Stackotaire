@@ -1,4 +1,8 @@
+import javafx.scene.effect.ColorAdjust;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 
 public class Card {
@@ -11,25 +15,34 @@ public class Card {
     public static final int JACK = 11;
     public static final int QUEEN = 12;
     public static final int KING = 13;
-    public static final int ACE = 1;
+    public static final int ACE = 1; 
     
     private int suit, value;
     private boolean isFaceUp, isSelected;
 
 	private String imagePath, strValue, strSuit;
-    //private Image image;
+    private Image image;
+    private ImageView imageView;
+    private HBox container;
+    
+    private CardStack myStack;
     
     public Card()
     {
     	suit = 0;
     	value = 0; 
     	isFaceUp = isSelected = false;
-    	strSuit = strValue = imagePath = "";
+    	strSuit = strValue = "";
+    	imageView = new ImageView();
+    	imagePath = "PNG-cards-1.3/empty.png";
+    	setImage();
+    	setImageView();
     }
     
     public Card(int value, int suit, boolean isFaceUp) 
       throws InvalidSuitException, ValueOutOfRangeException
     {
+    	imageView = new ImageView();
     	setValue(value);
     	setSuit(suit);
     	setFaceUp(isFaceUp);
@@ -61,7 +74,82 @@ public class Card {
     				 break;
     	}
     	setImagePath();
-    	//setImage();
+    	setImage();
+    	setImageView();
+    }
+    
+    public String getImagePath()
+    {
+    	return imagePath;
+    }
+    
+    public void pushToHBox(HBox h)
+    {
+    	h.getChildren().add(imageView);
+    	container = h;
+    }
+    
+    public HBox getContainer()
+    {
+    	return container;
+    }
+    
+    public void setContainer(HBox h)
+    {
+    	container = h;
+    }
+    
+    public boolean isTopOfStack()
+    {
+    	return this == myStack.peek();
+    }
+    
+    public void setStack(CardStack s)
+    {
+    	myStack = s;
+    }
+    
+    public CardStack getStack()
+    {
+    	return myStack;
+    }
+    
+    public void setImageView()
+    {
+    	imageView.setImage(image);
+    	imageView.setFitHeight(75);
+    	imageView.setPreserveRatio(true);
+    }
+    
+    public void resetImageView()
+    {
+    	imageView = new ImageView();
+    }
+    
+    public ImageView getImageView()
+    {
+    	return imageView;
+    }
+    
+    public void setImageView(ImageView imageView)
+    {
+    	this.imageView = imageView;
+    }
+    
+    public Image getImage()
+    {
+    	return image;
+    }
+    
+    public void setImage()
+    {
+    	image = new Image(imagePath);
+    }
+    
+    public void setImage(Image image)
+    {
+    	this.image = image;
+    	imageView.setImage(image);
     }
     
     public boolean isSelected() {
@@ -70,22 +158,22 @@ public class Card {
 
 	public void setIsSelected(boolean isSelected) {
 		this.isSelected = isSelected;
+		ColorAdjust c = new ColorAdjust();
+		if(isSelected) 
+			c.setSaturation(.5);
+		else
+			c.setSaturation(0);
+		imageView.setEffect(c);
 	}
 
-	public void setImagePath()
+	private void setImagePath()
     {
     	if(isFaceUp)
     		imagePath = "PNG-cards-1.3/" + strValue + "_of_" + strSuit + "s.png";
     	else 
     		imagePath = "PNG-cards-1.3/facedown.jpg";
     }
-    
-    public String getImagePath()
-    {
-    	setImagePath();
-    	return imagePath;
-    }
-    
+
 	@Override
 	public String toString() {
 		return "Card [suit=" + suits[suit] + ", value=" + values[value] + ", isFaceUp="
@@ -120,5 +208,8 @@ public class Card {
 	
 	public void setFaceUp(boolean isFaceUp) {
 		this.isFaceUp = isFaceUp;
+		setImagePath();
+		setImage();
+		setImageView();
 	}
 }
