@@ -13,12 +13,16 @@ import javafx.scene.layout.VBox;
  * @author Benito
  *
  */
-public class CardStack extends Stack {
+public class CardStack extends Stack<Card> {
 	private char type;
 	private int size;
 	private HBox container;
 	private int containerIndex;
-	private Card emptyCard;
+	private Card emptyCard, bottomCard, topCard; //emptyCard is useful,
+	//bottomCard and topCard are necessary to make transferring cards
+	//from waste to stock more efficient
+	//Note: bottomCard and topCard must be set manually; they are NOT
+	//automatically updated
 	
 	public CardStack(char type)
 	{
@@ -27,6 +31,8 @@ public class CardStack extends Stack {
 		container = null;
 		size = 0;
 		containerIndex = -1;
+		bottomCard = null;
+		topCard = null;
 		emptyCard = new Card();
 		emptyCard.setStack(this);
 	}
@@ -37,10 +43,36 @@ public class CardStack extends Stack {
 		setType(type);
 		this.container = container;
 		size = 0;
+		bottomCard = null;
+		topCard = null;
 		this.containerIndex = containerIndex;
 		emptyCard = new Card();
 		emptyCard.setStack(this);
 		emptyCard.setContainer(container);
+	}
+	
+	public void setTopCard(Card topCard)
+	{
+		this.topCard = topCard;
+		topCard.setContainer(container);
+		topCard.setStack(this);
+	}
+	
+	public Card getTopCard()
+	{
+		return topCard;
+	}
+	
+	public void setBottomCard(Card bottomCard)
+	{
+		this.bottomCard = bottomCard;
+		bottomCard.setContainer(container);
+		bottomCard.setStack(this);
+	}
+	
+	public Card getBottomCard()
+	{
+		return bottomCard;
 	}
 	
 	public Card getEmptyCard()
@@ -61,6 +93,7 @@ public class CardStack extends Stack {
 	public void setContainer(HBox h)
 	{
 		container = h;
+		emptyCard.setContainer(h);
 	}
 	
 	public HBox getContainer()
@@ -89,8 +122,6 @@ public class CardStack extends Stack {
 	}
 
 	public Card peek() {
-		//if(isEmpty()) 
-			//return emptyCard;
 		return (Card)super.peek();
 	}
 

@@ -39,6 +39,9 @@ public class Card {
     	setImageView();
     }
     
+    /*
+     * constructs a new instance of Card for a given value, suit, and isFaceUp boolean, and gives it an ImageView with an appropriate Image
+     */
     public Card(int value, int suit, boolean isFaceUp) 
       throws InvalidSuitException, ValueOutOfRangeException
     {
@@ -99,6 +102,10 @@ public class Card {
     	container = h;
     }
     
+    /*
+     * determines if this Card instance is the top of its stack
+     * @return true if this Card instance is the top of its stack, else false
+     */
     public boolean isTopOfStack()
     {
     	return this == myStack.peek();

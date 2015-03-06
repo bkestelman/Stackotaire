@@ -7,6 +7,7 @@ import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.scene.effect.ColorAdjust;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -30,201 +31,297 @@ public class Stackotaire extends Application {
 	
 	public static CardStack selectedStack;
 	
-	public static boolean mouseClicked, eventHandled;
-	
 	public static final int TABLEAUS = 7;
+	public static final int FOUNDATIONS = 4;
 
 	public static void main(String[] args) throws InvalidTypeException
 	{
-		mouseClicked = eventHandled = false;
 		selectedStack = null;
 		launch(args);
 	}
 	
-	@Override
-	public void start(Stage primaryStage) throws Exception {
+	public void start(Stage primaryStage)
+	{
 		int i, j;
-		i = j = 0;
+		HBox root = new HBox();
+		VBox gameVB = new VBox();
+		VBox menuVB = new VBox();
+		HBox topHB = new HBox();
+		ArrayList<HBox> tableausHB = new ArrayList<HBox>();
+		root.getChildren().addAll(gameVB, menuVB);
+		gameVB.getChildren().addAll(topHB);
+		topHB.setSpacing(2);
+		gameVB.setSpacing(2);
+		Scene mainScene = new Scene(root);
+		primaryStage.setScene(mainScene);
+		primaryStage.setMinWidth(500);
+		
+		//create deck and populate with 52 unique cards, facedown
 		deck = new CardStack('s');
-		tableaus = new CardStack[TABLEAUS];
-		foundations = new CardStack[4];
-		stock = deck;
-		CardStack waste = new CardStack('s');
-		//fill deck
-		for(int v = 1; v < Card.values.length; v++)
+		for(i = 1; i < Card.values.length; i++)
 		{
-			for(int s = 1; s < Card.suits.length; s++)
+			for(j = 1; j < Card.suits.length; j++)
 			{
-				try 
-				{
-					deck.push(new Card(v, s, false));
-				} 
-				catch(ValueOutOfRangeException|InvalidSuitException e)
+				try {
+					deck.push(new Card(i, j, false));
+				}
+				catch(ValueOutOfRangeException | InvalidSuitException e)
 				{
 					System.err.println(e.getMessage());
 				}
-			}
-		}
-		Collections.shuffle(deck);
-		VBox root = new VBox();
-		//set up foundations
-		HBox topHB = new HBox();
-		for(i = 0; i < foundations.length; i++)
-		{
-			foundations[i] = new CardStack('f', topHB, i);
-			foundations[i].push(new Card());
-			CardStack cs = foundations[i];
-			cs.peek().getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
-				public void handle(MouseEvent event)
-				{
-					System.out.println("hello");
-					if(selectedStack == null)
-						return;
-					Image selectedImage = selectedStack.peek().getImage(); //save the selected card's image
-					selectedStack.peek().setImageView(cs.peek().getImageView()); //keep the foundation's original imageView
-					selectedStack.peek().setImage(selectedImage); //restore the original image
-					cs.push(selectedStack.pop());
-					cs.peek().setIsSelected(false);
-					selectedStack.getContainer().getChildren().remove(selectedStack.getContainer().getChildren().size() - 1);
-					topHB.getChildren().remove(cs.getContainerIndex()); //remove old foundation imageView
-					//cs.getContainer().getChildren().add(cs.peek().getImageView());
-					selectedStack.setTopFaceUp();
-					//if(selectedStack.size() > 0)
-						//selectedStack.getContainer().getChildren().remove(selectedStack.getContainer().getChildren().size() - 1);
-					//if(selectedStack.size() > 0)
-						//selectedStack.getContainer().getChildren().add(selectedStack.peek().getImageView());
-					topHB.getChildren().add(cs.getContainerIndex(), cs.peek().getImageView());
-					System.out.println(cs.peek().getImagePath());
-					if(selectedStack.isEmpty())
-						selectedStack.getContainer().getChildren().add(selectedStack.getEmptyCard().getImageView());
-					selectedStack = null;
-				}
-			});
-			topHB.getChildren().add(cs.peek().getImageView());
-		}
-		root.getChildren().add(topHB);
-		root.setSpacing(2);
-		//set up tableaus
-		ArrayList<HBox> hb = new ArrayList<HBox>();
-		for(i = 0; i < TABLEAUS; i++)
-		{
-			HBox h = new HBox();
-			hb.add(h);
-			tableaus[i] = new CardStack('t', h, i);
-			Card emptyCard = tableaus[i].getEmptyCard();
-			emptyCard.getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
-				public void handle(MouseEvent event)
-				{
-					if(selectedStack == null)
-						return;
-					else 
-					{
-						selectedStack.peek().setIsSelected(false);
-						emptyCard.getStack().push(selectedStack.pop());
-						emptyCard.getContainer().getChildren().remove(0);
-						emptyCard.getContainer().getChildren().add(emptyCard.getStack().peek().getImageView());
-						selectedStack.setTopFaceUp();
-						if(selectedStack.isEmpty())
-							selectedStack.getContainer().getChildren().add(selectedStack.getEmptyCard().getImageView());
-						selectedStack = null;
-					}
-				}
-			});
-			for(j = 0; j < TABLEAUS - i - 1; j++)
-			{
-				tableaus[i].push(deck.pop());
-				Card card = tableaus[i].peek();
-				card.getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+				//add event handler to every card's ImageView
+				//why didn't I think to do it like this sooner... so many hours... so much lost code...
+				//cardStack type so useful
+				Card clickedCard = deck.peek();
+				clickedCard.getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 					public void handle(MouseEvent event)
 					{
-						if(!card.isTopOfStack()) return;
-						if(card.isSelected())
+						if(clickedCard.getStack().getType() == 't')
 						{
-							card.setIsSelected(false);
-							selectedStack = null;
+							if(!clickedCard.isTopOfStack())
+								return;
+							if(!clickedCard.isSelected())
+							{
+								if(selectedStack == null)
+								{
+									clickedCard.setIsSelected(true);
+									selectedStack = clickedCard.getStack();
+								}
+								else if(selectedStack.getType() == 't')
+								{
+									moveBetweenTableaus(selectedStack.pop(), clickedCard);
+									flipNextCard(selectedStack);
+									selectedStack = null;
+								}
+								else if(selectedStack.getType() == 'w')
+								{
+									moveFromWasteToTableau(waste.pop(), clickedCard);
+									selectedStack = null;
+								}
+							}
+							else 
+							{
+								clickedCard.setIsSelected(false);
+								selectedStack = null;
+							}
 						}
-						else
+						else if(clickedCard.getStack().getType() == 'f')
+						{
+							if(selectedStack == null)
+								return;
+							if(selectedStack.getType() == 't')
+							{
+								moveFromTableauToFoundation(selectedStack.pop(), clickedCard);
+								flipNextCard(selectedStack);
+								selectedStack = null;
+							}
+						}
+						else if(clickedCard.getStack().getType() == 's')
+						{
+							draw();
+						}
+						else if(clickedCard.getStack().getType() == 'w')
 						{
 							if(selectedStack == null)
 							{
-								card.setIsSelected(true);
-								selectedStack = card.getStack();
-							}
-							else
-							{
-								selectedStack.peek().setIsSelected(false);
-								if(selectedStack.size() > 0)
-									selectedStack.getContainer().getChildren().remove(selectedStack.getContainer().getChildren().size() - 1);
-								card.getContainer().getChildren().add(selectedStack.peek().getImageView());
-								card.getStack().push(selectedStack.pop());
-								//selectedStack.getContainer().getChildren().remove(selectedStack.getContainer().getChildren().size() - 1);
-								selectedStack.setTopFaceUp();
-								if(selectedStack.isEmpty())
-									selectedStack.getContainer().getChildren().add(selectedStack.getEmptyCard().getImageView());
-								//selectedStack.getContainer().getChildren().add(selectedStack.peek().getImageView());
-								selectedStack = null;
+								if(clickedCard.isSelected())
+								{
+									clickedCard.setIsSelected(false);
+									selectedStack = null;
+								}
+								else
+								{
+									clickedCard.setIsSelected(true);
+									selectedStack = waste;
+								}
 							}
 						}
 					}
 				});
-				hb.get(i).getChildren().add(tableaus[i].peek().getImageView());
 			}
-			tableaus[i].push(deck.pop());
-			tableaus[i].peek().setFaceUp(true);
-			Card card = tableaus[i].peek();
-			card.getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+		}
+		Collections.shuffle(deck);
+		
+		//distribute initial tableaus
+		tableaus = new CardStack[TABLEAUS];
+		for(i = 0; i < TABLEAUS; i++)
+		{
+			tableaus[i] = new CardStack('t');
+			HBox h = new HBox();
+			tableausHB.add(h);
+			tableaus[i].setContainer(h);
+			for(j = 0; j < TABLEAUS - i; j++)
+			{
+				tableaus[i].push(deck.pop());
+				if(j == TABLEAUS - i - 1)
+					tableaus[i].peek().setFaceUp(true);
+				h.getChildren().add(tableaus[i].peek().getImageView());
+			}
+			gameVB.getChildren().add(h);
+		}
+		
+		//display empty foundations
+		foundations = new CardStack[FOUNDATIONS];
+		for(i = 0; i < FOUNDATIONS; i++)
+		{
+			foundations[i] = new CardStack('f');
+			foundations[i].setContainerIndex(i);
+			foundations[i].setContainer(topHB);
+			topHB.getChildren().add(foundations[i].getEmptyCard().getImageView());
+		}
+		
+		//display waste pile
+		waste = new CardStack('w');
+		topHB.getChildren().add(waste.getEmptyCard().getImageView());
+		waste.setContainer(topHB);
+		
+		//populate and display stock deck
+		stock = new CardStack('s');
+		stock.setContainer(topHB);
+		while(!deck.isEmpty())
+		{
+			stock.push(deck.pop());
+		}
+		topHB.getChildren().add(stock.peek().getImageView());
+		
+		//add functionality to each CardStack's emptyCard
+		for(CardStack cs : tableaus)
+		{
+			cs.getEmptyCard().getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 				public void handle(MouseEvent event)
 				{
-					if(!card.isTopOfStack()) return;
-					if(card.isSelected())
+					if(selectedStack == null)
+						return;
+					else if(selectedStack.getType() == 't')
 					{
-						card.setIsSelected(false);
+						cs.getContainer().getChildren().remove(0);
+						moveBetweenTableaus(selectedStack.pop(), cs.getEmptyCard());
+						flipNextCard(selectedStack);
 						selectedStack = null;
 					}
-					else
+					else if(selectedStack.getType() == 'w')
 					{
-						if(selectedStack == null)
-						{
-							card.setIsSelected(true);
-							selectedStack = card.getStack();
-						}
-						else
-						{
-							selectedStack.peek().setIsSelected(false);
-							//System.out.println("hello");
-							//System.out.println(selectedStack.peek());
-							card.getContainer().getChildren().add(selectedStack.peek().getImageView());
-							card.getStack().push(selectedStack.pop());
-							//selectedStack.getContainer().getChildren().remove(selectedStack.getContainer().getChildren().size() - 1);
-							selectedStack.setTopFaceUp();
-							//if(selectedStack.size() > 0)
-								//selectedStack.getContainer().getChildren().remove(selectedStack.getContainer().getChildren().size() - 1);
-							//selectedStack.getContainer().getChildren().add(selectedStack.peek().getImageView());
-							if(selectedStack.isEmpty())
-								selectedStack.getContainer().getChildren().add(selectedStack.getEmptyCard().getImageView());
-							selectedStack = null;
-						}
+						if(selectedStack.isEmpty())
+							return;
 					}
 				}
 			});
-			hb.get(i).getChildren().add(tableaus[i].peek().getImageView());
-			root.getChildren().add(hb.get(i));
 		}
-		System.out.println(stock.peek());
-		topHB.getChildren().add(stock.peek().getImageView());
+		for(CardStack f : foundations)
+		{
+			f.getEmptyCard().getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+				public void handle(MouseEvent event)
+				{
+					if(selectedStack == null)
+						return;
+					else if(selectedStack.getType() == 't')
+					{
+						moveFromTableauToFoundation(selectedStack.pop(), f.getEmptyCard());
+						flipNextCard(selectedStack);
+						selectedStack = null;
+					}
+				}
+			});
+		}
+		stock.getEmptyCard().getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+			public void handle(MouseEvent event)
+			{
+				draw();
+			}
+		});
 		
-		Scene scene = new Scene(root);
-		primaryStage.setScene(scene);
-		primaryStage.setMinWidth(700);
 		primaryStage.show();
 	}
 	
+	public static void flipNextCard(CardStack cs)
+	{
+		if(cs.isEmpty())
+		{
+			cs.getContainer().getChildren().add(cs.getEmptyCard().getImageView());
+		}
+		else 
+			cs.peek().setFaceUp(true);
+	}
 	
+	public void moveFromWasteToTableau(Card from, Card to)
+	{
+		from.setIsSelected(false);
+		from.getContainer().getChildren().remove(FOUNDATIONS);
+		if(!waste.isEmpty())
+			from.getContainer().getChildren().add(FOUNDATIONS, waste.peek().getImageView());
+		else
+			from.getContainer().getChildren().add(FOUNDATIONS, waste.getEmptyCard().getImageView());
+		to.getContainer().getChildren().add(from.getImageView());
+		to.getStack().push(from);
+	}
+	
+	public static void draw()
+	{
+		if(!stock.isEmpty())
+		{
+			if(waste.isEmpty())
+				waste.setBottomCard(stock.peek());
+			stock.getContainer().getChildren().remove(FOUNDATIONS + 1);
+			waste.getContainer().getChildren().remove(FOUNDATIONS);
+			stock.peek().setFaceUp(true);
+			waste.push(stock.pop());
+			waste.getContainer().getChildren().add(waste.peek().getImageView());
+			if(!stock.isEmpty())
+				stock.getContainer().getChildren().add(stock.peek().getImageView());
+			else
+				stock.getContainer().getChildren().add(stock.getEmptyCard().getImageView());
+		}
+		else
+		{
+			while(!waste.isEmpty())
+			{
+				waste.peek().setFaceUp(false);
+				stock.push(waste.pop());
+			}
+			stock.getContainer().getChildren().remove(FOUNDATIONS + 1);
+			waste.getContainer().getChildren().remove(FOUNDATIONS);
+			waste.getContainer().getChildren().add(waste.getEmptyCard().getImageView());
+			stock.getContainer().getChildren().add(stock.peek().getImageView());
+			/*waste.getBottomCard().setFaceUp(false);
+			stock.setTopCard(waste.getBottomCard()); 
+			Thread myFirstThread = new Thread(new MoveWasteToDeck()); //:)
+			myFirstThread.start(); //using a thread because moving all the 
+			//cards from waste to stock takes noticeable time, this way the
+			//user can keep playing without having to wait
+			stock.getContainer().getChildren().remove(FOUNDATIONS + 1);
+			waste.getContainer().getChildren().remove(FOUNDATIONS);
+			waste.getContainer().getChildren().add(waste.getEmptyCard().getImageView());
+			stock.getContainer().getChildren().add(stock.getTopCard().getImageView());*/ //I TRIED... IllegalStateException and other confusing problems I'm not prepared to deal with
+			//I suspect I could get rid of at least some of the problems if I don't load an image for every single card, and also skip loading an image
+			//every time I call something like setFaceUp(). This would also make my program more efficient, since I would only be loading images whenever I
+			//add a Card's ImageView to an HBox... if I have time, I'll restructure the program to do things this way, but I have to finish other things first
+		}
+	}
+	
+	/*public static class MoveWasteToDeck implements Runnable
+	{
+		public void run() {
+			while(!waste.isEmpty())
+			{
+				waste.peek().setFaceUp(false);
+				stock.push(waste.pop());
+			}
+		}
+	}*/
+	
+	public static void moveFromTableauToFoundation(Card from, Card to)
+	{
+		to.getContainer().getChildren().remove(to.getStack().getContainerIndex());
+		to.getContainer().getChildren().add(to.getStack().getContainerIndex(), from.getImageView());
+		to.getStack().push(from);
+		from.setIsSelected(false);
+	}
+	
+	public static void moveBetweenTableaus(Card from, Card to)
+	{
+		from.getContainer().getChildren().remove(from.getContainer().getChildren().size() - 1);
+		to.getContainer().getChildren().add(from.getImageView());
+		to.getStack().push(from);
+		from.setIsSelected(false);
+	}
 }
-
-
-	
-//BAZINGA
-//implement movement rules
-//add foundation piles, stock, waste and functionality
-//add text option
