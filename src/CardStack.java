@@ -1,6 +1,8 @@
 import java.util.List;
 import java.util.Stack;
 
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.StringProperty;
 import javafx.event.EventHandler;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -15,15 +17,15 @@ import javafx.scene.layout.VBox;
  */
 public class CardStack extends Stack<Card> {
 	private char type;
-	private int size;
+	private int size, cardsFaceUp;
 	private HBox container;
 	private int containerIndex;
-	private Card emptyCard, bottomCard, topCard; //emptyCard is useful,
-	//bottomCard and topCard are necessary to make transferring cards
-	//from waste to stock more efficient
-	//Note: bottomCard and topCard must be set manually; they are NOT
-	//automatically updated
+	private Card emptyCard; //useful for keeping consistent behavior for empty decks
+	private StringProperty sizeProperty;
 	
+	/*
+	 * constructs a new instance of CardStack, for a given type
+	 */
 	public CardStack(char type)
 	{
 		super();
@@ -31,8 +33,7 @@ public class CardStack extends Stack<Card> {
 		container = null;
 		size = 0;
 		containerIndex = -1;
-		bottomCard = null;
-		topCard = null;
+		cardsFaceUp = 0;
 		emptyCard = new Card();
 		emptyCard.setStack(this);
 	}
@@ -43,36 +44,63 @@ public class CardStack extends Stack<Card> {
 		setType(type);
 		this.container = container;
 		size = 0;
-		bottomCard = null;
-		topCard = null;
+		cardsFaceUp = 0;
 		this.containerIndex = containerIndex;
 		emptyCard = new Card();
 		emptyCard.setStack(this);
 		emptyCard.setContainer(container);
 	}
 	
-	public void setTopCard(Card topCard)
+	public void printStack()
 	{
-		this.topCard = topCard;
-		topCard.setContainer(container);
-		topCard.setStack(this);
+		if(type == 's') 
+		{
+			if(isEmpty())
+				System.out.print(getEmptyCard() + " 0");
+			else
+				System.out.print(peek() + " " + size());
+		}
+		else if(type == 'w')
+		{
+			System.out.print("W1: ");
+			if(isEmpty())
+				System.out.print(getEmptyCard());
+			else
+				System.out.print(peek() + " ");
+		}
+		else if(type == 'f')
+		{
+			if(isEmpty())
+				System.out.print("[F" + (getContainerIndex() + 1) + "]");
+			else
+				System.out.print(peek());
+		}
+		else if(type == 't')
+		{
+			CardStack t = new CardStack('t');
+			while(!isEmpty())
+				t.push(pop());
+			while(!t.isEmpty())
+			{
+				System.out.print(t.peek() + " ");
+				push(t.pop());
+			}
+		}
 	}
 	
-	public Card getTopCard()
+	public int getCardsFaceUp()
 	{
-		return topCard;
+		return cardsFaceUp;
 	}
 	
-	public void setBottomCard(Card bottomCard)
+	public void incrementCardsFaceUp()
 	{
-		this.bottomCard = bottomCard;
-		bottomCard.setContainer(container);
-		bottomCard.setStack(this);
+		cardsFaceUp++;
 	}
 	
-	public Card getBottomCard()
+	public void decrementCardsFaceUp()
 	{
-		return bottomCard;
+		cardsFaceUp--;
 	}
 	
 	public Card getEmptyCard()
@@ -112,6 +140,10 @@ public class CardStack extends Stack<Card> {
 		size++;
 		item.setStack(this);
 		item.setContainer(container);
+		if(type == 's')
+			item.setFaceUp(false);
+		else if(item.isFaceUp())
+			incrementCardsFaceUp();
 		return (Card)super.push(item);
 	}
 
@@ -142,6 +174,11 @@ public class CardStack extends Stack<Card> {
 	public void setType(char type) 
 	{
 		this.type = type;
+	}
+	
+	public int size()
+	{
+		return super.size();
 	}
 	
 	public int mysize()
