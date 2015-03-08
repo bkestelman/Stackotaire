@@ -46,7 +46,7 @@ public class Stackotaire extends Application {
 	private static CardStack stock;
 	private static CardStack waste;
 	private static CardStack temp; //temp should only be used immediately after assigning it a CardStack
-	private static Stack<String> movesList;
+	private static Stack<String> movesList; //keeps a list of all legal moves performed, including automoves
 	
 	public static final int TABLEAUS = 7;
 	public static final int FOUNDATIONS = 4;
@@ -63,6 +63,8 @@ public class Stackotaire extends Application {
 	public void start(Stage primaryStage)
 	{
 		int i, j;
+		
+		//set up layout
 		HBox root = new HBox();
 		VBox gameVB = new VBox();
 		VBox menuVB = new VBox();
@@ -76,6 +78,7 @@ public class Stackotaire extends Application {
 		Scene mainScene = new Scene(root);
 		primaryStage.setScene(mainScene);
 		
+		//set up menu
 		Label hi = new Label("Hi! Click the cards to move or enter a move here. Use the buttons as you please.");
 		TextField enterMove = new TextField("Enter Move");
 		Button move = new Button("Move!");
@@ -85,6 +88,7 @@ public class Stackotaire extends Application {
 		
 		Label stockSize = new Label();
 		
+		//move button
 		move.setOnAction(new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent event) {
 				try 
@@ -98,9 +102,12 @@ public class Stackotaire extends Application {
 			}
 		});
 		
+		//new game button
 		newGame.setOnAction(new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent event)
 			{
+				if(Card.getSelectedCard() != null)
+					Card.getSelectedCard().setIsSelected(false);
 				Label pleaseWait = new Label("Please wait...");
 				menuVB.getChildren().add(pleaseWait);
 				topHB.getChildren().clear();
@@ -135,19 +142,19 @@ public class Stackotaire extends Application {
 				stockSize.setText(stock.size() + "");
 				topHB.getChildren().addAll(stock.peek().getImageView(), stockSize);
 				printAllStacks();
-				autoMove();
+				autoMove("all");
 				menuVB.getChildren().remove(pleaseWait);
 			}
 		});
 		
 		//create deck and populate with 52 unique cards, facedown
-		deck = new CardStack('s');
+		deck = new CardStack('s'); //deck is not displayed, so has no container
 		for(i = 1; i < Card.values.length; i++)
 		{
 			for(j = 1; j < Card.suits.length; j++)
 			{
 				try {
-					deck.push(new Card(i, j, false, deck));
+					deck.push(new Card(i, j, false));
 				}
 				catch(ValueOutOfRangeException | InvalidSuitException e)
 				{
@@ -155,80 +162,64 @@ public class Stackotaire extends Application {
 				}
 				//add event handler to every card's ImageView
 				//why didn't I think to do it like this sooner... so many hours... so much lost code...
-				//cardStack type so useful
+				//CardStack type so useful... greatest idea since fried butter
 				Card clickedCard = deck.peek();
 				clickedCard.getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 					public void handle(MouseEvent event)
 					{
-						if(clickedCard.getStack().getType() == 't')
+						try
 						{
-							if(!clickedCard.isFaceUp())
-								return;
-							if(!clickedCard.isSelected())
-							{
-								if(Card.getSelectedStack() == null)
-								{
-									clickedCard.setIsSelected(true);
-								}
-								else if(Card.getSelectedStack().getType() == 't' && clickedCard.isTopOfStack() && clickedCard.getStack() != Card.getSelectedStack())
-								{
-									temp = Card.getSelectedStack();
-									if(moveBetweenTableaus(Card.getSelectedCard(), clickedCard))
-										flipNextCard(temp);
-								}
-								else if(Card.getSelectedStack().getType() == 'w' && clickedCard.isTopOfStack())
-								{
-									moveFromWasteToTableau(Card.getSelectedCard(), clickedCard);
-								}
-							}
-							else 
-							{
-								clickedCard.setIsSelected(false);
-							}
-						}
-						else if(clickedCard.getStack().getType() == 'f')
+						//if the stock is clicked
+						if(clickedCard.getStack().getType() == 's')
 						{
-							if(Card.getSelectedStack() == null)
-								return;
-							else if(Card.getSelectedStack().getType() == 't' && Card.getSelectedCard().isTopOfStack())
-							{
-								temp = Card.getSelectedStack();
-								if(moveFromTableauToFoundation(Card.getSelectedCard(), clickedCard))
-									flipNextCard(temp);
-							}
-							else if(Card.getSelectedStack().getType() == 'w')
-							{
-								moveFromWasteToFoundation(Card.getSelectedCard(), clickedCard);
-							}
-						}
-						else if(clickedCard.getStack().getType() == 's')
-						{
-							if(Card.getSelectedStack() == waste)
-								waste.peek().setIsSelected(false);
-							draw();
+							makeMove("draw");
 							stockSize.setText(stock.size() + "");
 						}
-						else if(clickedCard.getStack().getType() == 'w')
+						//if a foundation is clicked and a Card is selected
+						else if(clickedCard.getStack().getType() == 'f' && Card.getSelectedStack() != null)
 						{
-							if(Card.getSelectedStack() == null)
-								waste.peek().setIsSelected(true);
-							else if(Card.getSelectedStack() == waste)
-								waste.peek().setIsSelected(false);
+							makeMove("move " + Card.getSelectedStack().getType() + "" + Card.getSelectedStack().getStackNum() + " f" + clickedCard.getStack().getStackNum());
+						}
+						//if a tableau or waste is clicked
+						else 
+						{
+							//if no Card is selected
+							if(Card.getSelectedStack() == null && clickedCard.isFaceUp())
+								clickedCard.setIsSelected(true);
+							//if a Card is already selected
+							else if(clickedCard.isTopOfStack())
+							{
+								if(Card.getSelectedCard().isTopOfStack())
+									makeMove("move " + Card.getSelectedStack().getType() + "" + Card.getSelectedStack().getStackNum() + " " + clickedCard.getStack().getType() + "" + clickedCard.getStack().getStackNum());
+								else
+									makeMove("moven " + 
+									  Card.getSelectedStack().getType() + "" + 
+									  Card.getSelectedStack().getStackNum() + 
+									  " " + clickedCard.getStack().getType() +
+									  "" + clickedCard.getStack().getStackNum()
+									  + " " + (1 + 
+									  Card.getSelectedCard().getDepth()));
+							}
+						}
+						}
+						catch(InvalidCodeException e)
+						{
+							System.out.println(e.getMessage());
 						}
 					}
 				});
 			}
 		}
+						
 		Collections.shuffle(deck);
 		
 		//distribute initial tableaus
 		tableaus = new CardStack[TABLEAUS];
 		for(i = 0; i < TABLEAUS; i++)
 		{
-			tableaus[i] = new CardStack('t');
 			HBox h = new HBox();
 			tableausHB.add(h);
-			tableaus[i].setContainer(h);
+			tableaus[i] = new CardStack('t', h, i + 1);
 			for(j = 0; j < TABLEAUS - i; j++)
 			{
 				tableaus[i].push(deck.pop());
@@ -243,20 +234,16 @@ public class Stackotaire extends Application {
 		foundations = new CardStack[FOUNDATIONS];
 		for(i = 0; i < FOUNDATIONS; i++)
 		{
-			foundations[i] = new CardStack('f');
-			foundations[i].setContainerIndex(i);
-			foundations[i].setContainer(topHB);
+			foundations[i] = new CardStack('f', topHB, i + 1);
 			topHB.getChildren().add(foundations[i].getEmptyCard().getImageView());
 		}
 		
 		//display waste pile
-		waste = new CardStack('w');
+		waste = new CardStack('w', topHB, 1);
 		topHB.getChildren().add(waste.getEmptyCard().getImageView());
-		waste.setContainer(topHB);
 		
 		//populate and display stock deck
-		stock = new CardStack('s');
-		stock.setContainer(topHB);
+		stock = new CardStack('s', topHB, 1);
 		while(!deck.isEmpty())
 		{
 			stock.push(deck.pop());
@@ -266,7 +253,7 @@ public class Stackotaire extends Application {
 		topHB.getChildren().add(stockSize);
 		
 		//initial automoves
-		autoMove();
+		autoMove("all");
 		
 		printAllStacks(); //print all CardStacks to console
 		
@@ -278,17 +265,13 @@ public class Stackotaire extends Application {
 				{
 					if(Card.getSelectedStack() == null)
 						return;
-					else if(Card.getSelectedStack().getType() == 't')
+					try
 					{
-						temp = Card.getSelectedStack();
-						if(moveBetweenTableaus(Card.getSelectedCard(), cs.getEmptyCard()))
-								flipNextCard(temp);
+						makeMove("move " + Card.getSelectedStack().getType() + "" + Card.getSelectedStack().getStackNum() + " t" + cs.getStackNum());
 					}
-					else if(Card.getSelectedStack().getType() == 'w')
+					catch(InvalidCodeException e)
 					{
-						if(Card.getSelectedStack().isEmpty())
-							return;
-						moveFromWasteToTableau(Card.getSelectedCard(), cs.getEmptyCard());
+						System.out.println(e.getMessage());
 					}
 				}
 			});
@@ -300,15 +283,16 @@ public class Stackotaire extends Application {
 				{
 					if(Card.getSelectedStack() == null)
 						return;
-					else if(Card.getSelectedStack().getType() == 't')
+					else 
 					{
-						temp = Card.getSelectedStack();
-						if(moveFromTableauToFoundation(Card.getSelectedCard(), f.getEmptyCard()))
-							flipNextCard(temp);
-					}
-					else if(Card.getSelectedStack().getType() == 'w')
-					{
-						moveFromWasteToFoundation(Card.getSelectedCard(), f.getEmptyCard());
+						try
+						{
+							makeMove("move " + Card.getSelectedStack().getType() + "" + Card.getSelectedStack().getStackNum() + " f" + f.getStackNum());
+						}
+						catch(InvalidCodeException e)
+						{
+							System.out.println(e.getMessage());
+						}
 					}
 				}
 			});
@@ -316,75 +300,183 @@ public class Stackotaire extends Application {
 		stock.getEmptyCard().getImageView().addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 			public void handle(MouseEvent event)
 			{
-				draw();
+				try
+				{
+					makeMove("draw");
+				}
+				catch(InvalidCodeException e)
+				{
+					System.out.println(e.getMessage());
+				}
 				stockSize.setText(stock.size() + "");
 			}
 		});
+
 		
 		primaryStage.show();
 	}
 	
 	/*
-	 * moves any card (from tableaus or waste) that can be moved to a foundation to the proper foundation
-	 * called whenever a card is drawn, or a move is made, or a new game is started
+	 * makes a move based on the given code String, which is a command followed
+	 * by the type of CardStack to move Card(s) from, followed by its stackNum,
+	 * followed by a space, followed by the type of CardStack to move Card(s)
+	 * to, followed by its stackNum. Deselects whatever Card is selected, 
+	 * regardless of what Card(s) are moved.
 	 */
-	public static void autoMove() 
+	public static void makeMove(String code) throws InvalidCodeException
 	{
-		for(int i = 0; i < FOUNDATIONS; i++)
+		if(Card.getSelectedCard() != null) 
+			Card.getSelectedCard().setIsSelected(false);
+		if(code == null) 
+			throw new InvalidCodeException("No code entered");
+		code = code.toLowerCase();
+		boolean noAuto = code.indexOf("noauto") > 0;
+		CardStack csa, csb;
+		//if moving multiple Cards
+		if(code.indexOf("moven") == 0)
 		{
-			if(!waste.isEmpty())
+			System.out.println(code);
+			//a and b are the containerIndexes of each CardStack, not the stackNums
+			int a = Integer.parseInt(code.substring(7, 8)) - 1;
+			int b = Integer.parseInt(code.substring(10, 11)) - 1;
+			//the number of Cards to move
+			int n = Integer.parseInt(code.substring(12, 13));
+			System.out.println(a + "," + b + "," + n);
+			//determine the CardStack to move from
+			//multiple Cards can only be moved from a tableau
+			if(code.substring(6, 7).equals("t"))
+				csa = tableaus[a];
+			else
+				throw new InvalidCodeException("Illegal Move");
+			//determine the CardStack to move to
+			//multiple Cards can only be moved to another tableau
+			if(code.substring(9, 10).equals("t"))
+				csb = tableaus[b];
+			else
+				throw new InvalidCodeException("Illegal Move");
+			//can't move from an empty CardStack
+			if(csa.isEmpty())
+				throw new InvalidCodeException("Empty CardStack selected");
+			//move the Cards
+			temp = new CardStack('t');
+			for(int i = 0; i < n; i++)
+				temp.push(csa.pop());
+			if(csb.isEmpty() && !validMove(temp.peek(), csb.getEmptyCard()))
 			{
-				if(foundations[i].isEmpty())
+				System.out.println("Illegal Move");
+				while(!temp.isEmpty())
+					csa.push(temp.pop());
+				return;
+			}
+			else if(!validMove(temp.peek(), csb.peek()))
+			{
+				System.out.println("Illegal Move");
+				while(!temp.isEmpty())
+					csa.push(temp.pop());
+				return;
+			}
+			while(!temp.isEmpty())
+				csb.push(temp.pop());
+			csa.display();
+			csb.display();
+			autoMove("" + csa.getContainerIndex());
+		}
+		//if moving one Card
+		else if(code.indexOf("move") == 0)
+		{
+			try
+			{
+				//a and b are the containerIndexes of each CardStack, not the stackNums
+				int a = Integer.parseInt(code.substring(6, 7)) - 1;
+				int b = Integer.parseInt(code.substring(9, 10)) - 1;
+				//determine the CardStack to move from
+				//a Card can be moved from a tableau or from waste (draw is handled later)
+				if(code.substring(5, 6).equals("t"))
+					csa = tableaus[a];
+				else if(code.substring(5, 6).equals("w"))
+					csa = waste;
+				else if(code.substring(5, 6).equals("f"))
+					csa = foundations[a];
+				else
+					throw new InvalidCodeException("Illegal Move");
+				//determine the CardStack to move to
+				//a Card can be moved to a tableau or to a foundation
+				if(code.substring(8, 9).equals("t"))
+					csb = tableaus[b];
+				else if(code.substring(8, 9).equals("f"))
+					csb = foundations[b];
+				else
+					throw new InvalidCodeException("Illegal Move");
+				//can't move from an empty CardStack
+				if(csa.isEmpty())
+					throw new InvalidCodeException("Empty CardStack selected");
+				//move the Card
+				if(!csb.isEmpty())
 				{
-					if(moveFromWasteToFoundation(waste.peek(), foundations[i].getEmptyCard()))
+					if(validMove(csa.peek(), csb.peek()))
 					{
-						
+						csb.push(csa.pop());
+						if(csa.getType() == 't')
+							autoMove("" + csa.getContainerIndex());
 					}
+					else if(!noAuto)
+						System.out.println("Illegal Move");
 				}
 				else 
 				{
-					if(moveFromWasteToFoundation(waste.peek(), foundations[i].peek()))
+					if(validMove(csa.peek(), csb.getEmptyCard()))
 					{
-						
+						csb.push(csa.pop());
+						if(csa.getType() == 't')
+							autoMove("" + csa.getContainerIndex());
 					}
+					else if(!noAuto)
+						System.out.println("Illegal Move");
 				}
+				csa.display();
+				csb.display();
 			}
-			for(int j = 0; j < TABLEAUS; j++)
+			catch(StringIndexOutOfBoundsException | NumberFormatException | ArrayIndexOutOfBoundsException e)
 			{
-				if(!tableaus[j].isEmpty())
+				throw new InvalidCodeException("Code Format Error");
+			}
+		}
+
+		else if(code.indexOf("draw") == 0)
+		{
+			if(!stock.isEmpty())
+			{
+				waste.push(stock.pop());
+				waste.peek().setFaceUp(true);
+				stock.display();
+				waste.display();
+				autoMove("w");
+			}
+			else
+			{
+				while(!waste.isEmpty())
 				{
-					if(foundations[i].isEmpty())
-					{
-						if(moveFromTableauToFoundation(tableaus[j].peek(), foundations[i].getEmptyCard()))
-						{
-							
-						}
-					}
-					else 
-					{
-						if(moveFromTableauToFoundation(tableaus[j].peek(), foundations[i].peek()))
-						{
-							
-						}
-					}
+					stock.push(waste.pop());
+					waste.display();
+					stock.display();
 				}
 			}
 		}
-	}
-	
-	public static void flipNextCard(CardStack cs)
-	{
-		if(cs.isEmpty())
+		else
+			throw new InvalidCodeException("Unknown command");
+		if(!noAuto)
 		{
-			cs.getContainer().getChildren().add(cs.getEmptyCard().getImageView());
-		}
-		else 
-		{
-			cs.peek().setFaceUp(true);
+			printAllStacks();
+			//autoMove();
 		}
 		checkIfVictory();
 	}
 	
+	/*
+	 * checks if the stalwart player of Stackotaire has finally achieved
+	 * deserved victory. Prints a victory message if all cards in tableaus are
+	 * face up.
+	 */
 	public static void checkIfVictory()
 	{
 		for(int i = 0; i < TABLEAUS; i++)
@@ -395,235 +487,50 @@ public class Stackotaire extends Application {
 		System.out.println("VICToRRYYYY");
 	}
 	
-	public static boolean moveFromWasteToTableau(Card from, Card to)
-	{
-		if(!(to.getValue() == 0 && from.getValue() == Card.KING))
-		{
-			if(from.isRed() && to.isRed() || !from.isRed() && !to.isRed() || !(to.getValue() == from.getValue() + 1))
-				return false;
-		}
-		else
-			to.getContainer().getChildren().remove(0);
-		from.setIsSelected(false);
-		to.getStack().push(from.getStack().pop());
-		waste.getContainer().getChildren().remove(FOUNDATIONS);
-		if(!waste.isEmpty())
-			waste.getContainer().getChildren().add(FOUNDATIONS, waste.peek().getImageView());
-		else
-			waste.getContainer().getChildren().add(FOUNDATIONS, waste.getEmptyCard().getImageView());
-		to.getContainer().getChildren().add(from.getImageView());
-		return true;
-	}
-	
-	public static void draw()
-	{
-		if(!stock.isEmpty())
-		{
-			stock.getContainer().getChildren().remove(FOUNDATIONS + 1);
-			waste.getContainer().getChildren().remove(FOUNDATIONS);
-			stock.peek().setFaceUp(true);
-			waste.push(stock.pop());
-			waste.getContainer().getChildren().add(FOUNDATIONS, waste.peek().getImageView());
-			if(!stock.isEmpty())
-				stock.getContainer().getChildren().add(FOUNDATIONS + 1, stock.peek().getImageView());
-			else
-				stock.getContainer().getChildren().add(FOUNDATIONS + 1, stock.getEmptyCard().getImageView());
-		}
-		else if(!waste.isEmpty())
-		{
-			while(!waste.isEmpty())
-			{
-				waste.peek().setFaceUp(false);
-				stock.push(waste.pop());
-			}
-			stock.getContainer().getChildren().remove(FOUNDATIONS + 1);
-			waste.getContainer().getChildren().remove(FOUNDATIONS);
-			waste.getContainer().getChildren().add(FOUNDATIONS, waste.getEmptyCard().getImageView());
-			stock.getContainer().getChildren().add(FOUNDATIONS + 1, stock.peek().getImageView());
-			/*waste.getBottomCard().setFaceUp(false);
-			stock.setTopCard(waste.getBottomCard()); 
-			Thread myFirstThread = new Thread(new MoveWasteToDeck()); //:)
-			myFirstThread.start(); //using a thread because moving all the 
-			//cards from waste to stock takes noticeable time, this way the
-			//user can keep playing without having to wait
-			stock.getContainer().getChildren().remove(FOUNDATIONS + 1);
-			waste.getContainer().getChildren().remove(FOUNDATIONS);
-			waste.getContainer().getChildren().add(waste.getEmptyCard().getImageView());
-			stock.getContainer().getChildren().add(stock.getTopCard().getImageView());*/ //I TRIED... IllegalStateException and other confusing problems I'm not prepared to deal with
-			//I suspect I could get rid of at least some of the problems if I don't load an image for every single card, and also skip loading an image
-			//every time I call something like setFaceUp(). This would also make my program more efficient, since I would only be loading images whenever I
-			//add a Card's ImageView to an HBox... if I have time, I'll restructure the program to do things this way, but I have to finish other things first
-		}
-		autoMove();
-	}
-	
-	/*public static class MoveWasteToDeck implements Runnable
-	{
-		public void run() {
-			while(!waste.isEmpty())
-			{
-				waste.peek().setFaceUp(false);
-				stock.push(waste.pop());
-			}
-		}
-	}*/
-	
-	public static boolean moveFromWasteToFoundation(Card from, Card to)
-	{
-		if(to.getValue() != from.getValue() - 1 || to.getSuit() != 0 && to.getSuit() != from.getSuit())
-			return false;
-		to.getStack().push(waste.pop());
-		waste.getContainer().getChildren().remove(FOUNDATIONS);
-		if(!waste.isEmpty())
-			waste.getContainer().getChildren().add(FOUNDATIONS, waste.peek().getImageView());
-		else
-			waste.getContainer().getChildren().add(FOUNDATIONS, waste.getEmptyCard().getImageView());
-		to.getContainer().getChildren().remove(to.getStack().getContainerIndex());
-		to.getContainer().getChildren().add(to.getStack().getContainerIndex(), from.getImageView());
-		from.setIsSelected(false);
-		autoMove();
-		return true;
-	}
-	
-	public static boolean moveFromTableauToFoundation(Card from, Card to) 
-	{
-		if(to.getValue() != from.getValue() - 1 || to.getSuit() != 0 && to.getSuit() != from.getSuit())
-			return false;
-		to.getContainer().getChildren().remove(to.getStack().getContainerIndex());
-		to.getContainer().getChildren().add(to.getStack().getContainerIndex(), from.getImageView());
-		CardStack fromStack = from.getStack();
-		to.getStack().push(from.getStack().pop());
-		flipNextCard(fromStack);
-		from.setIsSelected(false);
-		autoMove();
-		return true;
-	}
-	
 	/*
-	 * moves a Card from one tableau to another, if it is a legal move
-	 * @return true if move successful, else false, in which case Card from will remain selected.
+	 * checks if a Card can be legally moved on top of another
+	 * @param a the Card being moved
+	 * @param b the Card a is being moved to
+	 * @return true if move is valid/legal, false else
 	 */
-	public static boolean moveBetweenTableaus(Card from, Card to)
+	public static boolean validMove(Card a, Card b)
 	{
-		if(!(to.getValue() == 0 && from.getValue() == Card.KING))
+		//if moving to a tableau
+		if(b.getStack().getType() == 't')
 		{
-			if(from.isRed() && to.isRed() || !from.isRed() && !to.isRed() || to.getValue() != from.getValue() + 1 || to.getValue() == 0)
+			if(b.getValue() == 0 && a.getValue() == Card.KING)
+			{
+				return true;
+			}
+			else if(b.isRed() != a.isRed() && a.getValue() == b.getValue() - 1)
+			{
+				return true;
+			}
+			else
 				return false;
 		}
-		else
-			to.getContainer().getChildren().remove(0);
-		CardStack subStack = new CardStack('t');
-		while(from != from.getStack().peek())
+		//if moving to a foundation
+		else if(b.getStack().getType() == 'f')
 		{
-			subStack.push(from.getStack().pop());
-			from.getContainer().getChildren().remove(from.getContainer().getChildren().size() - 1);
+			if(b.getValue() == 0 && a.getValue() == Card.ACE)
+				return true;
+			else if(a.getSuit() == b.getSuit() && a.getValue() == b.getValue() + 1)
+				return true;
+			else
+				return false;
 		}
-		from.getContainer().getChildren().remove(from.getContainer().getChildren().size() - 1);
-		to.getContainer().getChildren().add(from.getImageView());
-		to.getStack().push(from.getStack().pop());
-		from.setIsSelected(false);
-		while(!subStack.isEmpty())
-		{
-			to.getContainer().getChildren().add(subStack.peek().getImageView());
-			to.getStack().push(subStack.pop());
-		}
-		autoMove();
-		return true;
+		return false;
 	}
-	
-	public static void makeMove(String code) throws InvalidCodeException
-	{
-		if(code == null) 
-			return;
-		code = code.toLowerCase();
-		if(code.indexOf("move") == 0)
-		{
-			try
-			{
-				if(code.substring(5, 6).equals("t") && code.substring(8, 9).equals("t"))
-				{
-					CardStack a = tableaus[Integer.parseInt(code.substring(6, 7)) - 1];
-					CardStack b = tableaus[Integer.parseInt(code.substring(9, 10)) - 1];
-					if(b.isEmpty())
-					{
-						if(moveBetweenTableaus(a.peek(), b.getEmptyCard()))
-							flipNextCard(a);
-						else
-							System.out.println("Illegal move");
-					}
-					else
-					{
-						if(moveBetweenTableaus(a.peek(), b.peek()))
-							flipNextCard(a);
-						else
-							System.out.println("Illegal move");
-					}
-				}
-				else if(code.substring(5, 6).equals("t") && code.substring(8, 9).equals("f"))
-				{
-					CardStack a = tableaus[Integer.parseInt(code.substring(6, 7)) - 1];
-					CardStack b = foundations[Integer.parseInt(code.substring(9, 10)) - 1];
-					if(b.isEmpty())
-					{
-						if(moveFromTableauToFoundation(a.peek(), b.getEmptyCard()))
-							flipNextCard(a);
-						else
-							System.out.println("Illegal move");
-					}
-					else
-					{
-						if(moveFromTableauToFoundation(a.peek(), b.peek()))
-							flipNextCard(a);
-						else
-							System.out.println("Illegal move");
-					}
-				}
-				else if(code.substring(5, 6).equals("w") && code.substring(8, 9).equals("t"))
-				{
-					CardStack a = waste;
-					CardStack b = tableaus[Integer.parseInt(code.substring(9, 10)) - 1];
-					if(a.isEmpty())
-						System.out.println("Waste is empty");
-					else if(b.isEmpty())
-						moveFromWasteToTableau(a.peek(), b.getEmptyCard());
-					else
-						moveFromWasteToTableau(a.peek(), b.peek());
-				}
-				else if(code.substring(5, 6).equals("w") && code.substring(8, 9).equals("f"))
-				{
-					CardStack a = waste;
-					CardStack b = foundations[Integer.parseInt(code.substring(9, 10)) - 1];
-					if(!a.isEmpty())
-					{
-						if(!b.isEmpty())
-							moveFromWasteToFoundation(a.peek(), b.peek());
-						else
-							moveFromWasteToFoundation(a.peek(), b.getEmptyCard());
-					}
-				}
-				else
-					throw new InvalidCodeException("Code Format Error");
-			}
-			catch(StringIndexOutOfBoundsException | NumberFormatException | ArrayIndexOutOfBoundsException e)
-			{
-				throw new InvalidCodeException("Code Format Error");
-			}
-		}
-		else if(code.indexOf("draw") == 0)
-		{
-			draw();
-		}
-		else
-			throw new InvalidCodeException("Unknown command");
-		printAllStacks();
-	}
-	
+	/*
+	 * prints all CardStacks to the console
+	 */
 	public static void printAllStacks()
 	{
 		for(int i = 0; i < FOUNDATIONS; i++)
 		{
 			foundations[i].printStack();
 		}
+		System.out.print(" ");
 		waste.printStack();
 		stock.printStack();
 		System.out.println("\n---------------------------------");
@@ -634,15 +541,149 @@ public class Stackotaire extends Application {
 			System.out.println("");
 		}
 	}
-	
+
 	/*
-	 * Useful debugging method
+	 * performs the appropriate automove (moves an open Card to a foundation
+	 * if possible) for a given code. If an automove is made, a check will be
+	 * made for any new available automoves
+	 * @param code can be "all" to check every tableau and waste for possible
+	 * automoves, "w" to only check waste, or an index (as a String) to check a
+	 * single tableau (the one with containerIndex == index)
 	 */
-	public static void trace(String functionName)
+	public static void autoMove(String code) 
 	{
-		System.err.println(functionName + " " + traceCounter++);
+		if(code == "all")
+		{
+			for(int i = 0; i < FOUNDATIONS; i++)
+			{
+				if(!waste.isEmpty())
+				{
+					if(!foundations[i].isEmpty())
+					{
+						if(validMove(waste.peek(), foundations[i].peek()))
+						{
+							foundations[i].push(waste.pop());
+							waste.display();
+							foundations[i].display();
+							printAllStacks();
+							autoMove("all");
+							return;
+						}
+					}
+					else
+					{
+						if(validMove(waste.peek(), foundations[i].getEmptyCard()))
+						{
+							foundations[i].push(waste.pop());
+							waste.display();
+							foundations[i].display();
+							printAllStacks();
+							autoMove("all");
+							return;
+						}
+					}
+				}
+				for(int j = 0; j < TABLEAUS; j++)
+				{
+					if(!tableaus[j].isEmpty())
+					{
+						if(!foundations[i].isEmpty())
+						{
+							if(validMove(tableaus[j].peek(), foundations[i].peek()))
+							{
+								foundations[i].push(tableaus[j].pop());
+								tableaus[j].display();
+								foundations[i].display();
+								printAllStacks();
+								autoMove("all");
+								return;
+							}
+						}
+						else
+						{
+							if(validMove(tableaus[j].peek(), foundations[i].getEmptyCard()))
+							{
+								foundations[i].push(tableaus[j].pop());
+								tableaus[j].display();
+								foundations[i].display();
+								printAllStacks();
+								autoMove("all");
+								return;
+							}
+						}
+					}
+				}
+			}
+		}
+		else if(code == "w")
+		{
+			for(int i = 0; i < FOUNDATIONS; i++)
+			{
+				if(!waste.isEmpty())
+				{
+					if(!foundations[i].isEmpty())
+					{
+						if(validMove(waste.peek(), foundations[i].peek()))
+						{
+							foundations[i].push(waste.pop());
+							waste.display();
+							foundations[i].display();
+							printAllStacks();
+							autoMove("all");
+							return;
+						}
+					}
+					else
+					{
+						if(validMove(waste.peek(), foundations[i].getEmptyCard()))
+						{
+							foundations[i].push(waste.pop());
+							waste.display();
+							foundations[i].display();
+							printAllStacks();
+							autoMove("all");
+							return;
+						}
+					}
+				}
+			}
+		}
+		else 
+		{
+			int index = Integer.parseInt(code);
+			for(int i = 0; i < FOUNDATIONS; i++)
+			{
+				if(!tableaus[index].isEmpty())
+				{
+					if(!foundations[i].isEmpty())
+					{
+						if(validMove(tableaus[index].peek(), foundations[i].peek()))
+						{
+							foundations[i].push(tableaus[index].pop());
+							waste.display();
+							foundations[i].display();
+							autoMove("all");
+							return;
+						}
+					}
+					else
+					{
+						if(validMove(tableaus[index].peek(), foundations[i].getEmptyCard()))
+						{
+							foundations[i].push(tableaus[index].pop());
+							tableaus[index].display();
+							foundations[i].display();
+							autoMove("all");
+							return;
+						}			
+					}
+				}
+			}
+		}
 	}
 }
+
+//make automove faster, list of moves, undo, ai, victory check
 
 //TODO
 //collect list of moves, print moves

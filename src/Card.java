@@ -30,6 +30,9 @@ public class Card {
     private static Card selectedCard;
     private static CardStack selectedStack;
     
+    /*
+     * constructs a new, empty Card
+     */
     public Card()
     {
     	suit = 0;
@@ -43,12 +46,21 @@ public class Card {
     }
     
     /*
-     * constructs a new instance of Card for a given value, suit, and isFaceUp boolean, and gives it an ImageView with an appropriate Image
+     * constructs a new instance of Card for a given value, suit, isFaceUp
+     * boolean, and owner CardStack, and gives it an ImageView with an 
+     * appropriate Image
+     * @param value the value of this Card, from 1 to 13 (value 0 indicates an
+     * empty Card)
+     * @param suit an int from 1 to 4 representing this Card's suit (0 
+     * indicates an empty Card - no suit)
+     * @param isFaceUp true if this Card is face up, else false
+     * @param myStack this Card's initial owner CardStack
+     * @throws InvalidSuitException
+     * @throws ValueOutOfRangeException
      */
-    public Card(int value, int suit, boolean isFaceUp, CardStack myStack) 
+    public Card(int value, int suit, boolean isFaceUp) 
       throws InvalidSuitException, ValueOutOfRangeException
     {
-    	this.myStack = myStack;
     	imageView = new ImageView();
     	setValue(value);
     	setSuit(suit);
@@ -87,6 +99,26 @@ public class Card {
     	setImagePath();
     	setImage();
     	setImageView();
+    }
+    
+    /*
+     * determines how deep this Card is in its CardStack - its distance from
+     * the top 
+     * @return this Card's distance from the top of its CardStack, where the 
+     * top Card has a depth of 0, and the bottom has a depth size() - 1
+     */
+    public int getDepth()
+    {
+    	int ans = 0;
+    	CardStack cs = new CardStack('t');
+    	while(myStack.peek() != this)
+    	{
+    		cs.push(myStack.pop());
+    		ans++;
+    	}
+    	while(!cs.isEmpty())
+    		myStack.push(cs.pop());
+    	return ans;
     }
     
     public static CardStack getSelectedStack()
@@ -146,7 +178,6 @@ public class Card {
     
     public void setImageView()
     {
-    	imageView.setImage(image);
     	imageView.setFitHeight(75);
     	imageView.setPreserveRatio(true);
     }
@@ -174,6 +205,7 @@ public class Card {
     public void setImage()
     {
     	image = new Image(imagePath);
+    	imageView.setImage(image);
     }
     
     public void setImage(Image image)
@@ -186,6 +218,13 @@ public class Card {
 		return isSelected;
 	}
 
+    /*
+     * changes this Card's isSelected value, changes this Card's color to show 
+     * if it is selected or not, and changes Card's static variables
+     * selectedCard and selectedStack accordingly. This assumes only one Card
+     * may be selected at a time.
+     * @param isSelected if true, selects the Card, else deselects it
+     */
 	public void setIsSelected(boolean isSelected) {
 		this.isSelected = isSelected;
 		ColorAdjust c = new ColorAdjust();
@@ -237,6 +276,9 @@ public class Card {
 		return value;
 	}
 	
+	/*
+	 * 
+	 */
 	public void setValue(int value) throws ValueOutOfRangeException {
 		if(value <= 0 || value >= values.length)
 			throw new ValueOutOfRangeException();
@@ -244,15 +286,39 @@ public class Card {
 			this.value = value;
 	}
 	
+	/*
+	 * determines if a Card is face up
+	 * @return isFaceUp self explanatory
+	 */
 	public boolean isFaceUp() {
 		return isFaceUp;
 	}
 	
+	/*
+	 * set this Card's isFaceUp value to a given value, and change its Image
+	 * accordingly
+	 * @param isFaceUp the new value
+	 */
 	public void setFaceUp(boolean isFaceUp) {
-		this.isFaceUp = isFaceUp;
-		myStack.incrementCardsFaceUp();
+		//if isFaceUp has the same value as this.isFaceUp, do nothing
+		if(this.isFaceUp == isFaceUp) 
+			return;
+		//if isFaceUp is false and this Card is face up, flip it face down
+		else if(this.isFaceUp && !isFaceUp)
+		{
+			this.isFaceUp = isFaceUp;
+			//decrement the number of face up Cards in this Card's CardStack
+			myStack.decrementCardsFaceUp(); 
+		}
+		//if isFaceUp is true and this Card is face down, flip it face up
+		else if(!this.isFaceUp && isFaceUp)
+		{
+			this.isFaceUp = isFaceUp;
+			//increment the number of face up Cards in this Card's CardStack
+			myStack.incrementCardsFaceUp();
+		}
+		//change this Card's image accordingly
 		setImagePath();
 		setImage();
-		setImageView();
 	}
 }
