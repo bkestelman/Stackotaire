@@ -294,7 +294,7 @@ public class Card {
 		return isFaceUp;
 	}
 	
-	/*
+	/**
 	 * set this Card's isFaceUp value to a given value, and change its Image
 	 * accordingly
 	 * @param isFaceUp the new value

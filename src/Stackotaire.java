@@ -32,10 +32,11 @@ import javafx.stage.Stage;
  * Recitation TA: Kevin Flyangolts
  * Grading TA: Zheyuan Gao
  * 
- * <code>Stackotaire</code> is a new version of the classic game Solitaire, implementing 
- * Stack data structures to hold <code>Card</code> objects in <code>CardStacks</code>. It
- * allows the player to move the cards by clicking to select a card and clicking another card 
- * to move it, and also includes an Undo option, automoving, AI, and no-graphics mode. 
+ * <code>Stackotaire</code> is a new version of the classic game Solitaire, 
+ * implementing Stack data structures to hold <code>Card</code> objects in 
+ * <code>CardStacks</code>. It allows the player to move the cards by clicking
+ * to select a card and clicking another card to move it, and also includes an
+ * Undo option, automoving, AI, and text commands for moving Cards 
  *   
  * @author benito.kestelman@stonybrook.edu
  */
@@ -45,16 +46,19 @@ public class Stackotaire extends Application {
 	private static CardStack[] foundations;
 	private static CardStack stock;
 	private static CardStack waste;
-	private static CardStack temp; //temp should only be used immediately after assigning it a CardStack
+	//private static CardStack temp; //temp should only be used immediately after assigning it a CardStack
 	private static Stack<String> movesList; //keeps a list of all legal moves performed, including automoves
 	
 	public static final int TABLEAUS = 7;
 	public static final int FOUNDATIONS = 4;
 	
 	private static int traceCounter;
+	
+	private static Label stockSize;
 
 	public static void main(String[] args) throws InvalidTypeException
 	{
+		stockSize = new Label();
 		movesList = new Stack<String>();
 		traceCounter = 0;
 		launch(args);
@@ -84,9 +88,100 @@ public class Stackotaire extends Application {
 		Button move = new Button("Move!");
 		enterMove.setMaxWidth(200);
 		Button newGame = new Button("New Game");
-		menuVB.getChildren().addAll(hi, enterMove, move, newGame);
+		Button printMoves = new Button("Print Moves History");
+		Button undo = new Button("Undo");
+		Button ai = new Button("Turn on AI");
+		menuVB.getChildren().addAll(hi, enterMove, move, newGame, printMoves, undo, ai);
 		
-		Label stockSize = new Label();
+		ai.setOnAction(new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent event)
+			{
+				boolean movesAvailable = true;
+				String lastMove = "";
+				movesList.push("");
+				while(!stock.isEmpty())
+				{
+					lastMove = movesList.peek(); 
+					for(int i = 0; i < TABLEAUS; i++)
+					{
+						if(!tableaus[i].isEmpty())
+						{
+							for(int j = 0; j < TABLEAUS; j++)
+							{
+								if(j != i)
+								{
+									//prevent the empty stacks king loop
+									if(tableaus[j].isEmpty() && tableaus[i].getCardsFaceUp() == tableaus[i].size())
+										continue;
+									try
+									{
+										//try to move from a tableau so that a card will open up
+										makeMove("moven t" + (i + 1) + " t" + (j + 1) + " " + tableaus[i].getCardsFaceUp() + "ai");
+									}
+									catch(InvalidCodeException e)
+									{
+									}
+									if(movesList.peek() != lastMove)
+									{
+										lastMove = movesList.peek();
+										i = 0;
+										break;
+									}
+								}
+							}
+						}
+					}
+					try
+					{
+						makeMove("draw");
+					}
+					catch(InvalidCodeException e)
+					{
+					}
+					lastMove = movesList.peek();
+					for(int i = 0; i < TABLEAUS; i++)
+					{
+						try 
+						{
+							makeMove("move w1 t" + (i + 1) + "ai");
+						}
+						catch(InvalidCodeException e)
+						{
+						}
+						if(lastMove != movesList.peek())
+						{
+							lastMove = movesList.peek();
+							break;
+						}
+					}
+				}
+			}
+		});
+		
+		undo.setOnAction(new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent event)
+			{
+				try
+				{
+					if(!movesList.empty())
+					{
+						makeMove(reverseMove(movesList.pop()) + "override");
+						movesList.pop(); //pop the undo move from movesList (don't want that hanging around)
+					}
+				}
+				catch(InvalidCodeException e)
+				{
+					System.out.println(e.getMessage());
+				}
+			}
+		});
+		
+		printMoves.setOnAction(new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent event)
+			{
+				printMovesHistory();
+			}
+		});
 		
 		//move button
 		move.setOnAction(new EventHandler<ActionEvent>() {
@@ -106,6 +201,7 @@ public class Stackotaire extends Application {
 		newGame.setOnAction(new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent event)
 			{
+				movesList.clear();
 				if(Card.getSelectedCard() != null)
 					Card.getSelectedCard().setIsSelected(false);
 				Label pleaseWait = new Label("Please wait...");
@@ -252,10 +348,9 @@ public class Stackotaire extends Application {
 		stockSize.setText(stock.size() + "");
 		topHB.getChildren().add(stockSize);
 		
+		printAllStacks();
 		//initial automoves
 		autoMove("all");
-		
-		printAllStacks(); //print all CardStacks to console
 		
 		//add functionality to each CardStack's emptyCard
 		for(CardStack cs : tableaus)
@@ -267,7 +362,15 @@ public class Stackotaire extends Application {
 						return;
 					try
 					{
-						makeMove("move " + Card.getSelectedStack().getType() + "" + Card.getSelectedStack().getStackNum() + " t" + cs.getStackNum());
+						if(Card.getSelectedCard().isTopOfStack())
+							makeMove("move " + Card.getSelectedStack().getType()
+							  + "" + Card.getSelectedStack().getStackNum() + 
+							  " t" + cs.getStackNum());
+						else
+							makeMove("moven t" +
+							  Card.getSelectedStack().getStackNum() + " t" + 
+							  cs.getStackNum() + " " +
+							  (1 + Card.getSelectedCard().getDepth()));
 					}
 					catch(InvalidCodeException e)
 					{
@@ -316,12 +419,21 @@ public class Stackotaire extends Application {
 		primaryStage.show();
 	}
 	
-	/*
+	/**
 	 * makes a move based on the given code String, which is a command followed
 	 * by the type of CardStack to move Card(s) from, followed by its stackNum,
 	 * followed by a space, followed by the type of CardStack to move Card(s)
 	 * to, followed by its stackNum. Deselects whatever Card is selected, 
 	 * regardless of what Card(s) are moved.
+	 * @param code a String of tokens separated by spaces. First token is a 
+	 * command (move, moveN, draw), second and third tokens are stack types
+	 * followed by stackNums (T1 F3, w1 t2, etc.), fourth token is the number 
+	 * of cards to move when using the moven command. After all tokens, the 
+	 * override command may be included to make an illegal move, or to allow 
+	 * an undo, and the ai token cancels printing illegal move attempts. All
+	 * tokens are case-insensitive.
+	 * @throws InvalidCodeException when code contains an unrecognized command,
+	 * or is not formatted correctly
 	 */
 	public static void makeMove(String code) throws InvalidCodeException
 	{
@@ -330,18 +442,17 @@ public class Stackotaire extends Application {
 		if(code == null) 
 			throw new InvalidCodeException("No code entered");
 		code = code.toLowerCase();
-		boolean noAuto = code.indexOf("noauto") > 0;
-		CardStack csa, csb;
+		boolean overRide = code.indexOf("override") > 0;
+		boolean ai = code.indexOf("ai") > 0;
+		CardStack csa, csb, temp;
 		//if moving multiple Cards
 		if(code.indexOf("moven") == 0)
 		{
-			System.out.println(code);
 			//a and b are the containerIndexes of each CardStack, not the stackNums
 			int a = Integer.parseInt(code.substring(7, 8)) - 1;
 			int b = Integer.parseInt(code.substring(10, 11)) - 1;
 			//the number of Cards to move
 			int n = Integer.parseInt(code.substring(12, 13));
-			System.out.println(a + "," + b + "," + n);
 			//determine the CardStack to move from
 			//multiple Cards can only be moved from a tableau
 			if(code.substring(6, 7).equals("t"))
@@ -361,16 +472,21 @@ public class Stackotaire extends Application {
 			temp = new CardStack('t');
 			for(int i = 0; i < n; i++)
 				temp.push(csa.pop());
-			if(csb.isEmpty() && !validMove(temp.peek(), csb.getEmptyCard()))
+			if(csb.isEmpty()) 
 			{
-				System.out.println("Illegal Move");
-				while(!temp.isEmpty())
-					csa.push(temp.pop());
-				return;
+				if(!validMove(temp.peek(), csb.getEmptyCard()) && !overRide)
+				{
+					if(!ai)
+						System.out.println("Illegal Move");
+					while(!temp.isEmpty())
+						csa.push(temp.pop());
+					return;
+				}
 			}
-			else if(!validMove(temp.peek(), csb.peek()))
+			else if(!validMove(temp.peek(), csb.peek()) && !overRide)
 			{
-				System.out.println("Illegal Move");
+				if(!ai)
+					System.out.println("Illegal Move");
 				while(!temp.isEmpty())
 					csa.push(temp.pop());
 				return;
@@ -379,6 +495,9 @@ public class Stackotaire extends Application {
 				csb.push(temp.pop());
 			csa.display();
 			csb.display();
+			movesList.push(code);
+			System.out.println(movesList.peek());
+			printAllStacks();
 			autoMove("" + csa.getContainerIndex());
 		}
 		//if moving one Card
@@ -390,7 +509,8 @@ public class Stackotaire extends Application {
 				int a = Integer.parseInt(code.substring(6, 7)) - 1;
 				int b = Integer.parseInt(code.substring(9, 10)) - 1;
 				//determine the CardStack to move from
-				//a Card can be moved from a tableau or from waste (draw is handled later)
+				//a Card can be moved from a tableau, waste, or a foundation 
+				//(draw is handled separately)
 				if(code.substring(5, 6).equals("t"))
 					csa = tableaus[a];
 				else if(code.substring(5, 6).equals("w"))
@@ -401,47 +521,61 @@ public class Stackotaire extends Application {
 					throw new InvalidCodeException("Illegal Move");
 				//determine the CardStack to move to
 				//a Card can be moved to a tableau or to a foundation
+				//a Card can also be moved to waste, if using override (such as
+				//in the case of an undo)
 				if(code.substring(8, 9).equals("t"))
 					csb = tableaus[b];
 				else if(code.substring(8, 9).equals("f"))
 					csb = foundations[b];
+				else if(code.substring(8, 9).equals("w") && overRide)
+					csb = waste;
 				else
 					throw new InvalidCodeException("Illegal Move");
 				//can't move from an empty CardStack
 				if(csa.isEmpty())
 					throw new InvalidCodeException("Empty CardStack selected");
+				//if moving from to the same CardStack, do nothing
+				if(csa == csb)
+					return;
 				//move the Card
 				if(!csb.isEmpty())
 				{
-					if(validMove(csa.peek(), csb.peek()))
+					if(validMove(csa.peek(), csb.peek()) || overRide)
 					{
 						csb.push(csa.pop());
+						movesList.push(code);
 						if(csa.getType() == 't')
 							autoMove("" + csa.getContainerIndex());
+						System.out.println(movesList.peek());
+						csa.display();
+						csb.display();
+						printAllStacks();
 					}
-					else if(!noAuto)
+					if(!ai)
 						System.out.println("Illegal Move");
 				}
 				else 
 				{
-					if(validMove(csa.peek(), csb.getEmptyCard()))
+					if(validMove(csa.peek(), csb.getEmptyCard()) || overRide)
 					{
 						csb.push(csa.pop());
+						movesList.push(code);
 						if(csa.getType() == 't')
 							autoMove("" + csa.getContainerIndex());
+						System.out.println(movesList.peek());
+						csa.display();
+						csb.display();
+						printAllStacks();
 					}
-					else if(!noAuto)
+					if(!ai)
 						System.out.println("Illegal Move");
 				}
-				csa.display();
-				csb.display();
 			}
 			catch(StringIndexOutOfBoundsException | NumberFormatException | ArrayIndexOutOfBoundsException e)
 			{
 				throw new InvalidCodeException("Code Format Error");
 			}
 		}
-
 		else if(code.indexOf("draw") == 0)
 		{
 			if(!stock.isEmpty())
@@ -450,6 +584,9 @@ public class Stackotaire extends Application {
 				waste.peek().setFaceUp(true);
 				stock.display();
 				waste.display();
+				movesList.push(code);
+				System.out.println(movesList.peek());
+				printAllStacks();
 				autoMove("w");
 			}
 			else
@@ -459,20 +596,82 @@ public class Stackotaire extends Application {
 					stock.push(waste.pop());
 					waste.display();
 					stock.display();
+					movesList.push(code);
+					System.out.println(movesList.peek());
+					printAllStacks();
+				}
+			}
+			stockSize.setText(stock.size() + "");
+		}
+		else if(code.indexOf("undraw") == 0 && overRide)
+		{
+			if(!waste.isEmpty())
+			{
+				stock.push(waste.pop());
+				waste.display();
+				stock.display();
+				movesList.push(code);
+				System.out.println(movesList.peek());
+				printAllStacks();
+			}
+			else
+			{
+				while(!stock.isEmpty())
+				{
+					waste.push(stock.pop());
+					stock.display();
+					waste.display();
+					movesList.push(code);
+					System.out.println(movesList.peek());
+					printAllStacks();
 				}
 			}
 		}
 		else
 			throw new InvalidCodeException("Unknown command");
-		if(!noAuto)
-		{
-			printAllStacks();
-			//autoMove();
-		}
 		checkIfVictory();
 	}
 	
-	/*
+	/**
+	 * reverses the command of a given move
+	 * @param move the move to reverse
+	 * @return the reverse command of move. In most cases this is the same 
+	 * command as the one given with its stack tokens flipped (for example, 
+	 * the reverse of "move T1 T2" is "move T2 T1". The reverse of "draw" is
+	 * "undraw"
+	 */
+	public static String reverseMove(String move)
+	{
+		if(move.equals("draw"))
+			return "undraw";
+		if(move.equals(""))
+			return "";
+		String[] reverse = move.split(" ");
+		String temp = reverse[1];
+		reverse[1] = reverse[2];
+		reverse[2] = temp;
+		temp = "";
+		for(int i = 0; i < reverse.length; i++)
+			temp += reverse[i] + " ";
+		return temp;
+	}
+	
+	/**
+	 * prints history of all legal moves made to console
+	 */
+	public static void printMovesHistory()
+	{
+		Stack<String> tempMoves = new Stack<String>();
+		while(!movesList.empty())
+			tempMoves.push(movesList.pop());
+		while(!tempMoves.empty())
+		{
+			movesList.push(tempMoves.pop());
+			System.out.println(movesList.peek());
+		}
+	}
+	
+	/**
 	 * checks if the stalwart player of Stackotaire has finally achieved
 	 * deserved victory. Prints a victory message if all cards in tableaus are
 	 * face up.
@@ -487,7 +686,7 @@ public class Stackotaire extends Application {
 		System.out.println("VICToRRYYYY");
 	}
 	
-	/*
+	/**
 	 * checks if a Card can be legally moved on top of another
 	 * @param a the Card being moved
 	 * @param b the Card a is being moved to
@@ -521,7 +720,8 @@ public class Stackotaire extends Application {
 		}
 		return false;
 	}
-	/*
+	
+	/**
 	 * prints all CardStacks to the console
 	 */
 	public static void printAllStacks()
@@ -542,7 +742,7 @@ public class Stackotaire extends Application {
 		}
 	}
 
-	/*
+	/**
 	 * performs the appropriate automove (moves an open Card to a foundation
 	 * if possible) for a given code. If an automove is made, a check will be
 	 * made for any new available automoves
@@ -565,6 +765,8 @@ public class Stackotaire extends Application {
 							foundations[i].push(waste.pop());
 							waste.display();
 							foundations[i].display();
+							movesList.push("move w1 f" + (i + 1));
+							System.out.println(movesList.peek());
 							printAllStacks();
 							autoMove("all");
 							return;
@@ -577,6 +779,8 @@ public class Stackotaire extends Application {
 							foundations[i].push(waste.pop());
 							waste.display();
 							foundations[i].display();
+							movesList.push("move w1 f" + (i + 1));
+							System.out.println(movesList.peek());
 							printAllStacks();
 							autoMove("all");
 							return;
@@ -594,6 +798,8 @@ public class Stackotaire extends Application {
 								foundations[i].push(tableaus[j].pop());
 								tableaus[j].display();
 								foundations[i].display();
+								movesList.push("move t" + (j + 1) + " f" + (i + 1));
+								System.out.println(movesList.peek());
 								printAllStacks();
 								autoMove("all");
 								return;
@@ -606,6 +812,8 @@ public class Stackotaire extends Application {
 								foundations[i].push(tableaus[j].pop());
 								tableaus[j].display();
 								foundations[i].display();
+								movesList.push("move t" + (j + 1) + " f" + (i + 1));
+								System.out.println(movesList.peek());
 								printAllStacks();
 								autoMove("all");
 								return;
@@ -628,6 +836,8 @@ public class Stackotaire extends Application {
 							foundations[i].push(waste.pop());
 							waste.display();
 							foundations[i].display();
+							movesList.push("move w1 f" + (i + 1));
+							System.out.println(movesList.peek());
 							printAllStacks();
 							autoMove("all");
 							return;
@@ -640,6 +850,8 @@ public class Stackotaire extends Application {
 							foundations[i].push(waste.pop());
 							waste.display();
 							foundations[i].display();
+							movesList.push("move w1 f" + (i + 1));
+							System.out.println(movesList.peek());
 							printAllStacks();
 							autoMove("all");
 							return;
@@ -660,8 +872,10 @@ public class Stackotaire extends Application {
 						if(validMove(tableaus[index].peek(), foundations[i].peek()))
 						{
 							foundations[i].push(tableaus[index].pop());
-							waste.display();
+							tableaus[index].display();
 							foundations[i].display();
+							movesList.push("move t" + (index + 1) + " f" + (i + 1));
+							System.out.println(movesList.peek());
 							autoMove("all");
 							return;
 						}
@@ -673,6 +887,8 @@ public class Stackotaire extends Application {
 							foundations[i].push(tableaus[index].pop());
 							tableaus[index].display();
 							foundations[i].display();
+							movesList.push("move t" + (index + 1) + " f" + (i + 1));
+							System.out.println(movesList.peek());
 							autoMove("all");
 							return;
 						}			
@@ -683,15 +899,5 @@ public class Stackotaire extends Application {
 	}
 }
 
-//make automove faster, list of moves, undo, ai, victory check
-
-//TODO
-//collect list of moves, print moves
-//print all cardstacks after each move
-//user input from console?
-//add undo
-//add ai
-//add automove from waste, after draw or movefromwastetotableau
-//fix victory check, shouldn't depend on stock and waste being empty
-//finish text input option
-//add no graphics mode
+//undo - flip card face down if necessary, ai, print console on screen?
+//bugs: can't deselect a card in the middle of a tableau by clicking it, the subtle flip face down after undo bug, undoing at end of game and newgame

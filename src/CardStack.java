@@ -11,9 +11,20 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 /**
+ * Benito Kestelman
+ * ID 109292160
+ * Homework #3
+ * CSE 214: R06
+ * Recitation TA: Kevin Flyangolts
+ * Grading TA: Zheyuan Gao
  * 
- * @author Benito
- *
+ * <code>CardStack</code> extends java.util.Stack and provides dynamically 
+ * allocated storage for Card objects, as well as functionality for displaying
+ * a CardStack and retrieving useful information about a CardStack, such as its
+ * HBox container in a graphical layout, or its type (stock, waste, foundation,
+ * or tableau)
+ *   
+ * @author benito.kestelman@stonybrook.edu
  */
 public class CardStack extends Stack<Card> {
 	private char type;
@@ -21,9 +32,8 @@ public class CardStack extends Stack<Card> {
 	private HBox container;
 	private int containerIndex, stackNum;
 	private Card emptyCard; //useful for displaying functional empty CardStacks
-	private StringProperty sizeProperty;
 	
-	/*
+	/**
 	 * constructs a new instance of CardStack, for a given type
 	 * Note: if using a graphical display of Cards, it is strongly advised to
 	 * use the constructor CardStack(char type, HBox container, int 
@@ -43,7 +53,7 @@ public class CardStack extends Stack<Card> {
 		emptyCard.setStack(this);
 	}
 	
-	/*
+	/**
 	 * constructs a new CardStack for a given type, and assigns it an HBox 
 	 * container and containerIndex, specifying its position in its container
 	 * Note: the way to implement this will vary depending on how you lay out
@@ -77,7 +87,7 @@ public class CardStack extends Stack<Card> {
 		emptyCard.setContainer(container);
 	}
 	
-	/*
+	/**
 	 * displays the current CardStack in its container
 	 */
 	public void display()
@@ -87,7 +97,14 @@ public class CardStack extends Stack<Card> {
 			container.getChildren().clear();
 			CardStack temp = new CardStack('t');
 			while(!isEmpty())
+			{
+				if(!temp.isEmpty())
+				{
+					if(peek().getValue() != temp.peek().getValue() + 1 || peek().isRed() == temp.peek().isRed())
+						peek().setFaceUp(false);
+				}
 				temp.push(pop());
+			}
 			while(!temp.isEmpty())
 			{
 				container.getChildren().add(temp.peek().getImageView());
@@ -102,13 +119,17 @@ public class CardStack extends Stack<Card> {
 		{
 			container.getChildren().remove(containerIndex);
 			if(!isEmpty())
+			{
 				container.getChildren().add(containerIndex, peek().getImageView());
+				if(type == 'f')
+					peek().setFaceUp(true);
+			}
 			else
 				container.getChildren().add(containerIndex, emptyCard.getImageView());
 		}
 	}
 	
-	/*
+	/**
 	 * gets this CardStack's stackNum, which represents this CardStack's 
 	 * position relative to other CardStacks of the same type. Thus, a 
 	 * foundation's stackNum will range from 1 to 4, a tableau's from 1 to 7,
@@ -122,7 +143,7 @@ public class CardStack extends Stack<Card> {
 		return stackNum;
 	}
 	
-	/*
+	/**
 	 * prints this CardStack to the console, depending on the type of CardStack
 	 */
 	public void printStack()
