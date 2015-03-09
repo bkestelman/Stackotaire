@@ -99,59 +99,92 @@ public class Stackotaire extends Application {
 				boolean movesAvailable = true;
 				String lastMove = "";
 				movesList.push("");
-				while(!stock.isEmpty())
+				int prevStockSize = 53;
+				boolean didDrawHelp = true;
+				boolean finalTry = false;
+				while(prevStockSize != stock.size())
 				{
-					lastMove = movesList.peek(); 
-					for(int i = 0; i < TABLEAUS; i++)
+					prevStockSize = stock.size();
+					while(!stock.isEmpty() || finalTry)
 					{
-						if(!tableaus[i].isEmpty())
+						lastMove = movesList.peek(); 
+						if(didDrawHelp)
 						{
-							for(int j = 0; j < TABLEAUS; j++)
+							//find useful moves between tableaus
+							for(int i = 0; i < TABLEAUS; i++)
 							{
-								if(j != i)
+								if(!tableaus[i].isEmpty())
 								{
-									//prevent the empty stacks king loop
-									if(tableaus[j].isEmpty() && tableaus[i].getCardsFaceUp() == tableaus[i].size())
-										continue;
-									try
+									for(int j = 0; j < TABLEAUS; j++)
 									{
-										//try to move from a tableau so that a card will open up
-										makeMove("moven t" + (i + 1) + " t" + (j + 1) + " " + tableaus[i].getCardsFaceUp() + "ai");
-									}
-									catch(InvalidCodeException e)
-									{
-									}
-									if(movesList.peek() != lastMove)
-									{
-										lastMove = movesList.peek();
-										i = 0;
-										break;
+										if(j != i)
+										{
+											//prevent the empty stacks king loop
+											if(tableaus[j].isEmpty() && tableaus[i].getCardsFaceUp() == tableaus[i].size())
+												continue;
+											try
+											{
+												//try to move from a tableau so that a card will open up
+												makeMove("moven t" + (i + 1) + " t" + (j + 1) + " " + tableaus[i].getCardsFaceUp() + " ai");
+											}
+											catch(InvalidCodeException e)
+											{
+											}
+											if(movesList.peek() != lastMove)
+											{
+												lastMove = movesList.peek();
+												i = 0;
+												break;
+											}
+										}
 									}
 								}
 							}
 						}
-					}
-					try
-					{
-						makeMove("draw");
-					}
-					catch(InvalidCodeException e)
-					{
-					}
-					lastMove = movesList.peek();
-					for(int i = 0; i < TABLEAUS; i++)
-					{
-						try 
+						if(!stock.isEmpty() || !waste.isEmpty())
 						{
-							makeMove("move w1 t" + (i + 1) + "ai");
-						}
-						catch(InvalidCodeException e)
-						{
-						}
-						if(lastMove != movesList.peek())
-						{
+							//draw
+							try
+							{
+								makeMove("draw");
+							}
+							catch(InvalidCodeException e)
+							{
+							}
 							lastMove = movesList.peek();
-							break;
+							didDrawHelp = false;
+							//try to move from waste to tableaus (automove takes care of waste to foundations)
+							for(int i = 0; i < TABLEAUS; i++)
+							{
+								try 
+								{
+									makeMove("move w1 t" + (i + 1) + " ai");
+								}
+								catch(InvalidCodeException e)
+								{
+								}
+								if(lastMove != movesList.peek())
+								{
+									didDrawHelp = true;
+									lastMove = movesList.peek();
+									break;
+								}
+							}
+							if(stock.isEmpty())
+							{
+								try
+								{
+									makeMove("draw");
+									break;
+								}
+								catch(InvalidCodeException e)
+								{
+								}
+							}
+						}
+						else if(!finalTry)
+						{
+							finalTry = true;
 						}
 					}
 				}
@@ -296,6 +329,8 @@ public class Stackotaire extends Application {
 									  + " " + (1 + 
 									  Card.getSelectedCard().getDepth()));
 							}
+							else
+								Card.getSelectedCard().setIsSelected(false);
 						}
 						}
 						catch(InvalidCodeException e)
@@ -458,16 +493,16 @@ public class Stackotaire extends Application {
 			if(code.substring(6, 7).equals("t"))
 				csa = tableaus[a];
 			else
-				throw new InvalidCodeException("Illegal Move");
+				throw new InvalidCodeException("Illegal Move: " + code);
 			//determine the CardStack to move to
 			//multiple Cards can only be moved to another tableau
 			if(code.substring(9, 10).equals("t"))
 				csb = tableaus[b];
 			else
-				throw new InvalidCodeException("Illegal Move");
+				throw new InvalidCodeException("Illegal Move: " + code);
 			//can't move from an empty CardStack
 			if(csa.isEmpty())
-				throw new InvalidCodeException("Empty CardStack selected");
+				throw new InvalidCodeException("Empty CardStack selected: " + code);
 			//move the Cards
 			temp = new CardStack('t');
 			for(int i = 0; i < n; i++)
@@ -477,7 +512,7 @@ public class Stackotaire extends Application {
 				if(!validMove(temp.peek(), csb.getEmptyCard()) && !overRide)
 				{
 					if(!ai)
-						System.out.println("Illegal Move");
+						System.out.println("Illegal Move: " + code);
 					while(!temp.isEmpty())
 						csa.push(temp.pop());
 					return;
@@ -486,7 +521,7 @@ public class Stackotaire extends Application {
 			else if(!validMove(temp.peek(), csb.peek()) && !overRide)
 			{
 				if(!ai)
-					System.out.println("Illegal Move");
+					System.out.println("Illegal Move: " + code);
 				while(!temp.isEmpty())
 					csa.push(temp.pop());
 				return;
@@ -518,7 +553,7 @@ public class Stackotaire extends Application {
 				else if(code.substring(5, 6).equals("f"))
 					csa = foundations[a];
 				else
-					throw new InvalidCodeException("Illegal Move");
+					throw new InvalidCodeException("Illegal Move: " + code);
 				//determine the CardStack to move to
 				//a Card can be moved to a tableau or to a foundation
 				//a Card can also be moved to waste, if using override (such as
@@ -530,10 +565,10 @@ public class Stackotaire extends Application {
 				else if(code.substring(8, 9).equals("w") && overRide)
 					csb = waste;
 				else
-					throw new InvalidCodeException("Illegal Move");
+					throw new InvalidCodeException("Illegal Move: " + code);
 				//can't move from an empty CardStack
 				if(csa.isEmpty())
-					throw new InvalidCodeException("Empty CardStack selected");
+					throw new InvalidCodeException("Empty CardStack selected: " + code);
 				//if moving from to the same CardStack, do nothing
 				if(csa == csb)
 					return;
@@ -552,7 +587,7 @@ public class Stackotaire extends Application {
 						printAllStacks();
 					}
 					if(!ai)
-						System.out.println("Illegal Move");
+						System.out.println("Illegal Move: " + code);
 				}
 				else 
 				{
@@ -573,7 +608,7 @@ public class Stackotaire extends Application {
 			}
 			catch(StringIndexOutOfBoundsException | NumberFormatException | ArrayIndexOutOfBoundsException e)
 			{
-				throw new InvalidCodeException("Code Format Error");
+				throw new InvalidCodeException("Code Format Error: " + code);
 			}
 		}
 		else if(code.indexOf("draw") == 0)
@@ -592,14 +627,12 @@ public class Stackotaire extends Application {
 			else
 			{
 				while(!waste.isEmpty())
-				{
 					stock.push(waste.pop());
-					waste.display();
-					stock.display();
-					movesList.push(code);
-					System.out.println(movesList.peek());
-					printAllStacks();
-				}
+				movesList.push(code);
+				waste.display();
+				stock.display();
+				System.out.println(movesList.peek());
+				printAllStacks();
 			}
 			stockSize.setText(stock.size() + "");
 		}
@@ -617,15 +650,14 @@ public class Stackotaire extends Application {
 			else
 			{
 				while(!stock.isEmpty())
-				{
 					waste.push(stock.pop());
-					stock.display();
-					waste.display();
-					movesList.push(code);
-					System.out.println(movesList.peek());
-					printAllStacks();
-				}
+				stock.display();
+				waste.display();
+				movesList.push(code);
+				System.out.println(movesList.peek());
+				printAllStacks();
 			}
+			stockSize.setText(stock.size() + "");
 		}
 		else
 			throw new InvalidCodeException("Unknown command");
@@ -899,5 +931,4 @@ public class Stackotaire extends Application {
 	}
 }
 
-//undo - flip card face down if necessary, ai, print console on screen?
-//bugs: can't deselect a card in the middle of a tableau by clicking it, the subtle flip face down after undo bug, undoing at end of game and newgame
+//bugs: undraw error?, the subtle flip face down after undo bug, undoing at end of game and newgame

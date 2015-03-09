@@ -121,7 +121,7 @@ public class CardStack extends Stack<Card> {
 			if(!isEmpty())
 			{
 				container.getChildren().add(containerIndex, peek().getImageView());
-				if(type == 'f')
+				if(type == 'f' || type == 'w')
 					peek().setFaceUp(true);
 			}
 			else
