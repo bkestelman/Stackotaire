@@ -52,22 +52,24 @@ public class Stackotaire extends Application {
 	public static final int TABLEAUS = 7;
 	public static final int FOUNDATIONS = 4;
 	
+	public static boolean aiUsed;
+	
 	private static int traceCounter;
 	
 	private static Label stockSize;
 
 	public static void main(String[] args) throws InvalidTypeException
 	{
+		aiUsed = false;
 		stockSize = new Label();
 		movesList = new Stack<String>();
+		movesList.push("");
 		traceCounter = 0;
 		launch(args);
 	}
 	
 	public void start(Stage primaryStage)
 	{
-		int i, j;
-		
 		//set up layout
 		HBox root = new HBox();
 		VBox gameVB = new VBox();
@@ -96,9 +98,7 @@ public class Stackotaire extends Application {
 		ai.setOnAction(new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent event)
 			{
-				boolean movesAvailable = true;
 				String lastMove = "";
-				movesList.push("");
 				int prevStockSize = 53;
 				boolean didDrawHelp = true;
 				boolean finalTry = false;
@@ -107,12 +107,17 @@ public class Stackotaire extends Application {
 					prevStockSize = stock.size();
 					while(!stock.isEmpty() || finalTry)
 					{
+						if(finalTry)
+						{
+							//scan for useful moves from foundations (common problem)
+						}
 						lastMove = movesList.peek(); 
 						if(didDrawHelp)
 						{
 							//find useful moves between tableaus
 							for(int i = 0; i < TABLEAUS; i++)
 							{
+								System.out.println("im back");
 								if(!tableaus[i].isEmpty())
 								{
 									for(int j = 0; j < TABLEAUS; j++)
@@ -132,6 +137,7 @@ public class Stackotaire extends Application {
 											}
 											if(movesList.peek() != lastMove)
 											{
+												System.err.println("sup");
 												lastMove = movesList.peek();
 												i = 0;
 												break;
@@ -143,15 +149,15 @@ public class Stackotaire extends Application {
 						}
 						if(!stock.isEmpty() || !waste.isEmpty())
 						{
+							lastMove = movesList.peek();
 							//draw
 							try
 							{
-								makeMove("draw");
+								makeMove("draw ai");
 							}
 							catch(InvalidCodeException e)
 							{
 							}
-							lastMove = movesList.peek();
 							didDrawHelp = false;
 							//try to move from waste to tableaus (automove takes care of waste to foundations)
 							for(int i = 0; i < TABLEAUS; i++)
@@ -163,7 +169,7 @@ public class Stackotaire extends Application {
 								catch(InvalidCodeException e)
 								{
 								}
-								if(lastMove != movesList.peek())
+								if(movesList.peek().indexOf("draw") < 0)
 								{
 									didDrawHelp = true;
 									lastMove = movesList.peek();
@@ -235,6 +241,7 @@ public class Stackotaire extends Application {
 			public void handle(ActionEvent event)
 			{
 				movesList.clear();
+				movesList.push("");
 				if(Card.getSelectedCard() != null)
 					Card.getSelectedCard().setIsSelected(false);
 				Label pleaseWait = new Label("Please wait...");
@@ -243,17 +250,24 @@ public class Stackotaire extends Application {
 				for(int i = 0; i < FOUNDATIONS; i++)
 				{
 					while(!foundations[i].isEmpty())
+					{
 						stock.push(foundations[i].pop());
+						stock.peek().setFlippedOnMove(-1);
+					}
 					topHB.getChildren().add(foundations[i].getEmptyCard().getImageView());
 				}
 				for(int i = 0; i < TABLEAUS; i++)
 				{
 					while(!tableaus[i].isEmpty())
+					{
 						stock.push(tableaus[i].pop());
+						stock.peek().setFlippedOnMove(-1);
+					}
 				}
 				while(!waste.isEmpty())
 				{
 					stock.push(waste.pop());
+					stock.peek().setFlippedOnMove(-1);
 				}
 				topHB.getChildren().add(waste.getEmptyCard().getImageView());
 				Collections.shuffle(stock);
@@ -278,9 +292,9 @@ public class Stackotaire extends Application {
 		
 		//create deck and populate with 52 unique cards, facedown
 		deck = new CardStack('s'); //deck is not displayed, so has no container
-		for(i = 1; i < Card.values.length; i++)
+		for(int i = 1; i < Card.values.length; i++)
 		{
-			for(j = 1; j < Card.suits.length; j++)
+			for(int j = 1; j < Card.suits.length; j++)
 			{
 				try {
 					deck.push(new Card(i, j, false));
@@ -346,12 +360,12 @@ public class Stackotaire extends Application {
 		
 		//distribute initial tableaus
 		tableaus = new CardStack[TABLEAUS];
-		for(i = 0; i < TABLEAUS; i++)
+		for(int i = 0; i < TABLEAUS; i++)
 		{
 			HBox h = new HBox();
 			tableausHB.add(h);
 			tableaus[i] = new CardStack('t', h, i + 1);
-			for(j = 0; j < TABLEAUS - i; j++)
+			for(int j = 0; j < TABLEAUS - i; j++)
 			{
 				tableaus[i].push(deck.pop());
 				if(j == TABLEAUS - i - 1)
@@ -363,7 +377,7 @@ public class Stackotaire extends Application {
 		
 		//display empty foundations
 		foundations = new CardStack[FOUNDATIONS];
-		for(i = 0; i < FOUNDATIONS; i++)
+		for(int i = 0; i < FOUNDATIONS; i++)
 		{
 			foundations[i] = new CardStack('f', topHB, i + 1);
 			topHB.getChildren().add(foundations[i].getEmptyCard().getImageView());
@@ -553,7 +567,7 @@ public class Stackotaire extends Application {
 				else if(code.substring(5, 6).equals("f"))
 					csa = foundations[a];
 				else
-					throw new InvalidCodeException("Illegal Move: " + code);
+					throw new InvalidCodeException("Attempting to move from illegal CardStack: " + code);
 				//determine the CardStack to move to
 				//a Card can be moved to a tableau or to a foundation
 				//a Card can also be moved to waste, if using override (such as
@@ -565,7 +579,7 @@ public class Stackotaire extends Application {
 				else if(code.substring(8, 9).equals("w") && overRide)
 					csb = waste;
 				else
-					throw new InvalidCodeException("Illegal Move: " + code);
+					throw new InvalidCodeException("Attempting to move to illegal CardStack: " + code);
 				//can't move from an empty CardStack
 				if(csa.isEmpty())
 					throw new InvalidCodeException("Empty CardStack selected: " + code);
@@ -586,7 +600,7 @@ public class Stackotaire extends Application {
 						csb.display();
 						printAllStacks();
 					}
-					if(!ai)
+					else if(!ai && !overRide)
 						System.out.println("Illegal Move: " + code);
 				}
 				else 
@@ -602,7 +616,7 @@ public class Stackotaire extends Application {
 						csb.display();
 						printAllStacks();
 					}
-					if(!ai)
+					else if(!ai && !overRide)
 						System.out.println("Illegal Move");
 				}
 			}
@@ -674,7 +688,8 @@ public class Stackotaire extends Application {
 	 */
 	public static String reverseMove(String move)
 	{
-		if(move.equals("draw"))
+		if(!movesList.empty()) System.err.println(movesList.peek());
+		if(move.indexOf("draw") >= 0)
 			return "undraw";
 		if(move.equals(""))
 			return "";
@@ -751,6 +766,16 @@ public class Stackotaire extends Application {
 				return false;
 		}
 		return false;
+	}
+	
+	/**
+	 * determines the number of moves made, not counting undos or moves that 
+	 * were undone. 
+	 * @return the number of moves made (one less than the size of movesList)
+	 */
+	public static int getMoveNum()
+	{
+		return movesList.size() - 1; //subtract the initial empty String in movesList
 	}
 	
 	/**
@@ -931,4 +956,5 @@ public class Stackotaire extends Application {
 	}
 }
 
-//bugs: undraw error?, the subtle flip face down after undo bug, undoing at end of game and newgame
+//bugs: the REALLY subtle flip face down after undo to foundation bug, check text output after each move, output after automove, 
+//add: text commands for undo, restart, start over with same cards (undo all)

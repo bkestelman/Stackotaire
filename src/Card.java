@@ -17,7 +17,7 @@ public class Card {
     public static final int KING = 13;
     public static final int ACE = 1; 
     
-    private int suit, value;
+    private int suit, value, flippedOnMove;
     private boolean isFaceUp, isSelected;
 
 	private String imagePath, strValue, strSuit, strValue2;
@@ -30,13 +30,14 @@ public class Card {
     private static Card selectedCard;
     private static CardStack selectedStack;
     
-    /*
+    /**
      * constructs a new, empty Card
      */
     public Card()
     {
     	suit = 0;
     	value = 0; 
+    	flippedOnMove = -1;
     	isFaceUp = isSelected = false;
     	strSuit = strValue = "";
     	imageView = new ImageView();
@@ -45,7 +46,7 @@ public class Card {
     	setImageView();
     }
     
-    /*
+    /**
      * constructs a new instance of Card for a given value, suit, isFaceUp
      * boolean, and owner CardStack, and gives it an ImageView with an 
      * appropriate Image
@@ -62,6 +63,7 @@ public class Card {
       throws InvalidSuitException, ValueOutOfRangeException
     {
     	imageView = new ImageView();
+    	flippedOnMove = -1;
     	setValue(value);
     	setSuit(suit);
     	setFaceUp(isFaceUp);
@@ -101,7 +103,7 @@ public class Card {
     	setImageView();
     }
     
-    /*
+    /**
      * determines how deep this Card is in its CardStack - its distance from
      * the top 
      * @return this Card's distance from the top of its CardStack, where the 
@@ -119,6 +121,26 @@ public class Card {
     	while(!cs.isEmpty())
     		myStack.push(cs.pop());
     	return ans;
+    }
+    
+    /**
+     * records the move number this Card was flipped. Only applicable to Cards
+     * in tableau CardStacks, so if that move is undone, this Card will be 
+     * unflipped. Useless for other CardStack types, since foundations and 
+     * waste are always face-up and stock is always face-down.
+     * <dt><b>Preconditions:</b><dd>This Card should be in a tableau CardStack,
+     * and moveNum should be the correct move number at which this Card was 
+     * flipped face up
+     * @param moveNum the move number at which this Card was flipped face-up
+     */
+    public void setFlippedOnMove(int moveNum)
+    {
+    	flippedOnMove = moveNum;
+    }
+    
+    public int getFlippedOnMove()
+    {
+    	return flippedOnMove;
     }
     
     public static CardStack getSelectedStack()

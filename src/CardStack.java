@@ -109,11 +109,19 @@ public class CardStack extends Stack<Card> {
 			{
 				container.getChildren().add(temp.peek().getImageView());
 				push(temp.pop());
+				if(peek().getFlippedOnMove() >= Stackotaire.getMoveNum())
+				{
+					System.out.println("Success?");
+					peek().setFaceUp(false);
+				}
 			}
 			if(isEmpty())
 				container.getChildren().add(emptyCard.getImageView());
-			else
+			else if(!peek().isFaceUp())
+			{
 				peek().setFaceUp(true);
+				peek().setFlippedOnMove(Stackotaire.getMoveNum());
+			}
 		}
 		else
 		{
