@@ -21,7 +21,7 @@ public class Card {
     private boolean isFaceUp, isSelected;
 
 	private String imagePath, strValue, strSuit, strValue2;
-    private Image image;
+    private Image faceUpImage; //each Card has unique face up image, whereas all cards have access to class's facedown image
     private ImageView imageView;
     private HBox container;
     
@@ -29,6 +29,8 @@ public class Card {
     
     private static Card selectedCard;
     private static CardStack selectedStack;
+    
+    private static final Image faceDownImage = new Image("PNG-cards-1.3/facedown.jpg");
     
     /**
      * constructs a new, empty Card
@@ -42,7 +44,7 @@ public class Card {
     	strSuit = strValue = "";
     	imageView = new ImageView();
     	imagePath = "PNG-cards-1.3/empty.png";
-    	setImage();
+    	imageView.setImage(new Image(imagePath));
     	setImageView();
     }
     
@@ -99,6 +101,7 @@ public class Card {
     				 break;
     	}
     	setImagePath();
+    	faceUpImage = new Image(imagePath);
     	setImage();
     	setImageView();
     }
@@ -214,28 +217,23 @@ public class Card {
     	return imageView;
     }
     
-    public void setImageView(ImageView imageView)
-    {
-    	this.imageView = imageView;
-    }
-    
     public Image getImage()
     {
-    	return image;
+    	if(isFaceUp)
+    		return faceUpImage;
+    	else
+    		return faceDownImage;
     }
     
     public void setImage()
     {
-    	image = new Image(imagePath);
-    	imageView.setImage(image);
+    	//faceUpImage = new Image(imagePath);
+    	if(isFaceUp)
+    		imageView.setImage(faceUpImage);
+    	else
+    		imageView.setImage(faceDownImage);
     }
-    
-    public void setImage(Image image)
-    {
-    	this.image = image;
-    	imageView.setImage(image);
-    }
-    
+
     public boolean isSelected() {
 		return isSelected;
 	}
@@ -267,10 +265,7 @@ public class Card {
 
 	private void setImagePath()
     {
-    	if(isFaceUp)
-    		imagePath = "PNG-cards-1.3/" + strValue + "_of_" + strSuit + "s.png";
-    	else 
-    		imagePath = "PNG-cards-1.3/facedown.jpg";
+   		imagePath = "PNG-cards-1.3/" + strValue + "_of_" + strSuit + "s.png"; //faceup Image path. To access facedown Image, use static faceDownImage
     }
 
 	@Override

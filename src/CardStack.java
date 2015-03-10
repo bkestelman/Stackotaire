@@ -110,10 +110,7 @@ public class CardStack extends Stack<Card> {
 				container.getChildren().add(temp.peek().getImageView());
 				push(temp.pop());
 				if(peek().getFlippedOnMove() >= Stackotaire.getMoveNum())
-				{
-					System.out.println("Success?");
 					peek().setFaceUp(false);
-				}
 			}
 			if(isEmpty())
 				container.getChildren().add(emptyCard.getImageView());
@@ -260,7 +257,9 @@ public class CardStack extends Stack<Card> {
 		item.setContainer(container);
 		if(type == 's')
 			item.setFaceUp(false);
-		else if(item.isFaceUp())
+		if(type == 'w' || type == 'f')
+			item.setFaceUp(true);
+		if(item.isFaceUp())
 			incrementCardsFaceUp();
 		return (Card)super.push(item);
 	}

@@ -117,7 +117,6 @@ public class Stackotaire extends Application {
 							//find useful moves between tableaus
 							for(int i = 0; i < TABLEAUS; i++)
 							{
-								System.out.println("im back");
 								if(!tableaus[i].isEmpty())
 								{
 									for(int j = 0; j < TABLEAUS; j++)
@@ -137,7 +136,6 @@ public class Stackotaire extends Application {
 											}
 											if(movesList.peek() != lastMove)
 											{
-												System.err.println("sup");
 												lastMove = movesList.peek();
 												i = 0;
 												break;
@@ -491,6 +489,11 @@ public class Stackotaire extends Application {
 		if(code == null) 
 			throw new InvalidCodeException("No code entered");
 		code = code.toLowerCase();
+		if(code.equals("override"))
+		{
+			movesList.push("");
+			throw new InvalidCodeException("No moves made");
+		}
 		boolean overRide = code.indexOf("override") > 0;
 		boolean ai = code.indexOf("ai") > 0;
 		CardStack csa, csb, temp;
@@ -688,7 +691,7 @@ public class Stackotaire extends Application {
 	 */
 	public static String reverseMove(String move)
 	{
-		if(!movesList.empty()) System.err.println(movesList.peek());
+		//if(!movesList.empty()) System.err.println(movesList.peek());
 		if(move.indexOf("draw") >= 0)
 			return "undraw";
 		if(move.equals(""))
@@ -957,4 +960,5 @@ public class Stackotaire extends Application {
 }
 
 //bugs: the REALLY subtle flip face down after undo to foundation bug, check text output after each move, output after automove, 
-//add: text commands for undo, restart, start over with same cards (undo all)
+//add: text commands for undo, restart, start over with same cards (undo all), give ai ability to move from foundations
+//improve image efficiency
