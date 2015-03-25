@@ -1,14 +1,6 @@
-import java.util.List;
 import java.util.Stack;
 
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.StringProperty;
-import javafx.event.EventHandler;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 
 /**
  * Benito Kestelman
@@ -88,7 +80,8 @@ public class CardStack extends Stack<Card> {
 	}
 	
 	/**
-	 * displays the current CardStack in its container
+	 * displays the current CardStack in its container, flipping any Cards that
+	 * should be flipped 
 	 */
 	public void display()
 	{
@@ -98,11 +91,16 @@ public class CardStack extends Stack<Card> {
 			CardStack temp = new CardStack('t');
 			while(!isEmpty())
 			{
-				if(!temp.isEmpty())
+				//this is a cheap way to check what Cards in a tableau should be 
+				//face-up, but it leaves out certain cases
+				/*if(!temp.isEmpty())
 				{
-					if(peek().getValue() != temp.peek().getValue() + 1 || peek().isRed() == temp.peek().isRed())
+					if(peek().getValue() != temp.peek().getValue() + 1 || peek().isRed() == temp.peek().isRed()) 
+					{
 						peek().setFaceUp(false);
-				}
+						System.out.println("trace 1" + peek());
+					}
+				}*/
 				temp.push(pop());
 			}
 			while(!temp.isEmpty())
@@ -110,7 +108,9 @@ public class CardStack extends Stack<Card> {
 				container.getChildren().add(temp.peek().getImageView());
 				push(temp.pop());
 				if(peek().getFlippedOnMove() >= Stackotaire.getMoveNum())
+				{
 					peek().setFaceUp(false);
+				}
 			}
 			if(isEmpty())
 				container.getChildren().add(emptyCard.getImageView());
@@ -125,12 +125,14 @@ public class CardStack extends Stack<Card> {
 			container.getChildren().remove(containerIndex);
 			if(!isEmpty())
 			{
-				container.getChildren().add(containerIndex, peek().getImageView());
+				container.getChildren().add(containerIndex, 
+				  peek().getImageView());
 				if(type == 'f' || type == 'w')
 					peek().setFaceUp(true);
 			}
 			else
-				container.getChildren().add(containerIndex, emptyCard.getImageView());
+				container.getChildren().add(containerIndex, 
+				  emptyCard.getImageView());
 		}
 	}
 	
@@ -188,7 +190,7 @@ public class CardStack extends Stack<Card> {
 		}
 	}
 	
-	/*
+	/**
 	 * returns the number of Cards that are face up in this CardStack
 	 */
 	public int getCardsFaceUp()
@@ -196,7 +198,7 @@ public class CardStack extends Stack<Card> {
 		return cardsFaceUp;
 	}
 	
-	/*
+	/**
 	 * records the addition of a face up card to this CardStack, either from a 
 	 * face up Card being pushed, or a face down Card being flipped
 	 */
@@ -205,7 +207,7 @@ public class CardStack extends Stack<Card> {
 		cardsFaceUp++;
 	}
 	
-	/*
+	/**
 	 * records the subtraction of a face up card to this CardStack, either from
 	 * a face up Card being popped, or a face up Card being flipped
 	 */
@@ -214,7 +216,7 @@ public class CardStack extends Stack<Card> {
 		cardsFaceUp--;
 	}
 	
-	/*
+	/**
 	 * returns this CardStack's empty Card, useful for displaying an empty 
 	 * CardStack
 	 */
@@ -223,7 +225,7 @@ public class CardStack extends Stack<Card> {
 		return emptyCard;
 	}
 	
-	/*
+	/**
 	 * returns this CardStack's container index
 	 */
 	public int getContainerIndex()
@@ -231,7 +233,7 @@ public class CardStack extends Stack<Card> {
 		return containerIndex;
 	}
 
-	/*
+	/**
 	 * returns this CardStack's container
 	 */
 	public HBox getContainer()
@@ -239,7 +241,7 @@ public class CardStack extends Stack<Card> {
 		return container;
 	}
 	
-	/*
+	/**
 	 * flips this CardStack's top Card to face up, or does nothing if it was
 	 * already face up
 	 */
@@ -250,7 +252,11 @@ public class CardStack extends Stack<Card> {
 		peek().setFaceUp(true);
 	}
 	
-	
+	/**
+	 * pushes a Card to this CardStack, adding it to the top where it will be
+	 * accessible, but Cards below it will not
+	 * @return the Card pushed
+	 */
 	public Card push(Card item) {
 		size++;
 		item.setStack(this);
@@ -264,6 +270,10 @@ public class CardStack extends Stack<Card> {
 		return (Card)super.push(item);
 	}
 
+	/**
+	 * pops off the top Card of this CardStack, removing it from the CardStack
+	 * @return the Card popped
+	 */
 	public Card pop() {
 		size--;
 		if(peek().isFaceUp())
@@ -272,34 +282,64 @@ public class CardStack extends Stack<Card> {
 		return (Card)super.pop();
 	}
 
+	/**
+	 * @return the top Card of this CardStack
+	 */
 	public Card peek() {
 		return (Card)super.peek();
 	}
 
+	/**
+	 * determines whether this CardStack is empty
+	 * @return true if this CardStack contains no Cards, false else
+	 */
 	public boolean isEmpty() {
 		return size == 0;
 	}
 
-	@Override
-	public synchronized int search(Object o) {
-		return super.search(o);
-	}
-
+	/**
+	 * @return the type of this CardStack (stock 's', waste 'w', foundation
+	 * 'f', tableau 't')
+	 */
 	public char getType()
 	{
 		return type;
 	}
 
+	/**
+	 * changes this CardStack's type
+	 * @param type the new type for this CardStack (must be 's', 'w', 't', or 
+	 * 'f', unless new types are implemented. 
+	 */
 	public void setType(char type) 
 	{
 		this.type = type;
 	}
 	
+	/**
+	 * @return the number of Cards in this CardStack
+	 */
 	public int size()
 	{
 		return super.size();
 	}
 	
+	/**
+	 * @return the number of Cards in this CardStack
+	 * This method is unnecessary, since we have the super.size() method; I 
+	 * left it in to point out a funny bug: if we just had the method size(), 
+	 * but overwrote it as return size; instead of return super.size(), it 
+	 * would cause an EmptyStackException when popping or peeking a CardStack
+	 * with 1 element, because we decrement size, then call super.peek()/pop(),
+	 * which call size() to check if the CardStack is empty. Since we overwrote
+	 * (is overwrote valid terminology or do we have to say overrode?) size() 
+	 * AND decremented size before calling peek()/pop(), when peek()/pop() call
+	 * size(), they will get 0 if the CardStack had one Card, and throw an 
+	 * EmptyStackException. Thus, I renamed my size() method to mySize() to 
+	 * check if it gave the same result as Stack's size(), and it did so I was 
+	 * really confused about what caused the error, but after looking through
+	 * the Stack class I figured it out :)
+	 */
 	public int mysize()
 	{
 		return size;

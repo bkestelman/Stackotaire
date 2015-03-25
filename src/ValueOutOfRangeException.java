@@ -17,14 +17,14 @@
  */
 public class ValueOutOfRangeException extends Exception {
 	
-	/*
+	/**
 	 * creates a new ValueOutOfRangeException
 	 */
 	public ValueOutOfRangeException() {
 		super();
 	}
 	
-	/*
+	/**
 	 * creates a new ValueOutOfRangeException, with a message String that can
 	 * be accessed through Exception's getMessage() method
 	 * @param message a friendly error message

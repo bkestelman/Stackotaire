@@ -2,12 +2,13 @@ import javafx.scene.effect.ColorAdjust;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 
 
 public class Card {
-    public static final String values[] = {" ","A","2","3","4","5","6","7","8","9","10","J","Q","K"};
-    public static final char suits[]    = {' ', '\u2666', '\u2663','\u2665', '\u2660'};   // {' ', '♦', '♣','♥', '♠'}
+    public static final String values[] = 
+      {" ","A","2","3","4","5","6","7","8","9","10","J","Q","K"};
+    public static final char suits[]    = 
+      {' ', '\u2666', '\u2663','\u2665', '\u2660'}; // {' ', '♦', '♣','♥', '♠'}
     public static final int DIAMOND = 1;
     public static final int CLUB = 2;
     public static final int HEART = 3;
@@ -21,7 +22,8 @@ public class Card {
     private boolean isFaceUp, isSelected;
 
 	private String imagePath, strValue, strSuit, strValue2;
-    private Image faceUpImage; //each Card has unique face up image, whereas all cards have access to class's facedown image
+    private Image faceUpImage; //each Card has unique face up image, whereas 
+    //all cards have access to the Card class's facedown image
     private ImageView imageView;
     private HBox container;
     
@@ -30,7 +32,8 @@ public class Card {
     private static Card selectedCard;
     private static CardStack selectedStack;
     
-    private static final Image faceDownImage = new Image("PNG-cards-1.3/facedown.jpg");
+    private static final Image faceDownImage = new 
+      Image("PNG-cards-1.3/facedown.jpg");
     
     /**
      * constructs a new, empty Card
@@ -141,49 +144,69 @@ public class Card {
     	flippedOnMove = moveNum;
     }
     
+    /**
+     * gets the move number on which this Card was flipped face up on a tableau
+     * (doesn't apply to Cards moved from stock to waste)
+     * @return the move number on which this Card was flipped face up on a 
+     * tableau. -1 if the Card was not flipped face up on a tableau.
+     */
     public int getFlippedOnMove()
     {
     	return flippedOnMove;
     }
     
+    /**
+     * @return the currently selected CardStack, the CardStack with a Card 
+     * selected
+     */
     public static CardStack getSelectedStack()
     {
     	return selectedStack;
     }
     
+    /**
+     * @return the currently selected Card
+     */
     public static Card getSelectedCard()
     {
     	return selectedCard;
     }
     
+    /**
+     * @return true if this Card's suit is red (heart or diamond), false else
+     */
     public boolean isRed()
     {
     	return suit == HEART || suit == DIAMOND;
     }
     
+    /**
+     * @return the String path to this Card's face-up image
+     */
     public String getImagePath()
     {
     	return imagePath;
     }
     
-    public void pushToHBox(HBox h)
-    {
-    	h.getChildren().add(imageView);
-    	container = h;
-    }
-    
+    /**
+     * @return the HBox in which this Card is displayed 
+     */
     public HBox getContainer()
     {
     	return container;
     }
     
+    /**
+     * changes the HBox where this Card is displayed
+     * @param h the new HBox container to display this Card in
+     */
     public void setContainer(HBox h)
     {
     	container = h;
     }
     
-    /*
-     * determines if this Card instance is the top of its stack
+    /**
+     * determines if this Card is the top of its stack
      * @return true if this Card instance is the top of its stack, else false
      */
     public boolean isTopOfStack()
@@ -191,32 +214,43 @@ public class Card {
     	return this == myStack.peek();
     }
     
+    /**
+     * changes the CardStack this Card belongs to
+     * @param s the new CardStack this Card belongs to
+     */
     public void setStack(CardStack s)
     {
     	myStack = s;
     }
     
+    /**
+     * @return the CardStack this Card belongs to
+     */
     public CardStack getStack()
     {
     	return myStack;
     }
     
+    /**
+     * adjusts the size settings of this Card's ImageView to standard defaults
+     */
     public void setImageView()
     {
     	imageView.setFitHeight(75);
     	imageView.setPreserveRatio(true);
     }
-    
-    public void resetImageView()
-    {
-    	imageView = new ImageView();
-    }
-    
+
+    /**
+     * @return this Card's ImageView
+     */
     public ImageView getImageView()
     {
     	return imageView;
     }
     
+    /**
+     * @return this Card's Image, depending on its isFaceUp state
+     */
     public Image getImage()
     {
     	if(isFaceUp)
@@ -225,21 +259,27 @@ public class Card {
     		return faceDownImage;
     }
     
+    /**
+     * sets this Card's ImageView's Image according to this Card's isFaceUp 
+     * state
+     */
     public void setImage()
     {
-    	//faceUpImage = new Image(imagePath);
     	if(isFaceUp)
     		imageView.setImage(faceUpImage);
     	else
     		imageView.setImage(faceDownImage);
     }
 
+    /**
+     * @return true if this Card is selected, false else
+     */
     public boolean isSelected() {
 		return isSelected;
 	}
 
-    /*
-     * changes this Card's isSelected value, changes this Card's color to show 
+    /**
+     * changes this Card's isSelected state, changes this Card's color to show 
      * if it is selected or not, and changes Card's static variables
      * selectedCard and selectedStack accordingly. This assumes only one Card
      * may be selected at a time.
@@ -263,25 +303,42 @@ public class Card {
 		imageView.setEffect(c);
 	}
 
+	/**
+	 * sets this Card faceUpImage path String, according to its value and suit
+	 */
 	private void setImagePath()
     {
-   		imagePath = "PNG-cards-1.3/" + strValue + "_of_" + strSuit + "s.png"; //faceup Image path. To access facedown Image, use static faceDownImage
+   		imagePath = "PNG-cards-1.3/" + strValue + "_of_" + strSuit + "s.png"; 
+   		//faceup Image path. To access facedown Image, use static faceDownImage
     }
 
+	/**
+	 * @return a String representation of this Card
+	 */
 	@Override
 	public String toString() {
 		if(value == 0)
-			return "[  ]";
+			return "[  ]"; //emptyCard
 		if(isFaceUp)
 			return "[" + strValue2 + "" + suits[suit] + "]";
 		else
-			return "[XX]";
+			return "[XX]"; //faceDown Card
 	}
 
+	/**
+	 * @return this Card's suit int. Use suits[suit] to access the char 
+	 * representation of a Card's suit
+	 */
 	public int getSuit() {
 		return suit;
 	}
 	
+	/**
+	 * changes this Card's suit
+	 * @param suit the new suit int
+	 * @throws InvalidSuitException if the suit int provided is out of range of
+	 * suits represented in the suits array 
+	 */
 	public void setSuit(int suit) throws InvalidSuitException {
 		if(suit > 4 || suit <= 0)
 			throw new InvalidSuitException();
@@ -289,12 +346,19 @@ public class Card {
 			this.suit = suit;
 	}
 	
+	/**
+	 * @return this Card's value int (J = 11, Q = 12, K = 13, A = 1)
+	 */
 	public int getValue() {
 		return value;
 	}
 	
-	/*
-	 * 
+	/**
+	 * changes this Card's value int
+	 * @throws ValueOutOfRangeException if value is greater than 13 or less 
+	 * than 1 (emptyCards can have a value of 0, but they are initialized with
+	 * it - a Card cannot be changed to an emptyCard if it is not initialized 
+	 * as one)
 	 */
 	public void setValue(int value) throws ValueOutOfRangeException {
 		if(value <= 0 || value >= values.length)
@@ -303,9 +367,9 @@ public class Card {
 			this.value = value;
 	}
 	
-	/*
+	/**
 	 * determines if a Card is face up
-	 * @return isFaceUp self explanatory
+	 * @return isFaceUp true if it is, false else
 	 */
 	public boolean isFaceUp() {
 		return isFaceUp;
@@ -335,7 +399,6 @@ public class Card {
 			myStack.incrementCardsFaceUp();
 		}
 		//change this Card's image accordingly
-		setImagePath();
 		setImage();
 	}
 }

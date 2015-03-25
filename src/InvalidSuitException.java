@@ -17,14 +17,14 @@
  */
 public class InvalidSuitException extends Exception {
 	
-	/*
+	/**
 	 * creates a new InvalidSuitException
 	 */
 	public InvalidSuitException() {
 		super();
 	}
 	
-	/*
+	/**
 	 * creates a new InvalidSuitException with a message that can be accessed
 	 * through the inherited getMessage() method from the Exception class
 	 * @param message a friendly error message
